@@ -2,12 +2,13 @@
 import React from 'react';
 import { MdNotificationsNone, MdInfoOutline, MdMenu } from 'react-icons/md';
 import { SearchIcon } from '../icons/SearchIcon';
+import SearchInput from '../ui/SearchInput';
 
 const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
     const { brandText, onOpenSidebar } = props;
 
     return (
-        <nav className="sticky top-4 z-40 flex flex-row flex-wrap items-center justify-between rounded-xl bg-white/10 p-2 backdrop-blur-xl dark:bg-[#0b14374d]">
+        <nav className="sticky top-4 z-40 flex flex-row flex-wrap items-center justify-between rounded-xl bg-white/10 p-2 backdrop-blur-xl dark:bg-[#0b14374d] print:hidden">
             <div className="ml-[6px]">
                 <div className="h-6 pt-1">
                     <a
@@ -38,16 +39,12 @@ const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
             </div>
 
             <div className="relative mt-[3px] flex h-[61px] w-[355px] flex-grow items-center justify-around gap-2 rounded-full bg-white px-2 py-2 shadow-xl shadow-shadow-500 dark:!bg-navy-800 dark:shadow-none md:w-[365px] md:flex-grow-0 md:gap-1 xl:w-[365px] xl:gap-2">
-                <div className="flex h-full items-center rounded-full bg-[#F4F7FE] text-navy-700 dark:bg-navy-900 dark:text-white xl:w-[225px]">
-                    <p className="pl-3 pr-2 text-xl">
-                        <SearchIcon className="h-4 w-4 text-gray-400 dark:text-white" />
-                    </p>
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        className="block h-full w-full rounded-full bg-transparent text-sm font-medium text-navy-700 outline-none placeholder:!text-gray-400 dark:text-white dark:placeholder:!text-white sm:w-fit"
-                    />
-                </div>
+                <SearchInput
+                    value={""} // Handle state if necessary, but keep it consistent for now
+                    onChange={() => { }}
+                    placeholder="Search..."
+                    className="xl:w-[225px] !bg-transparent !border-none !shadow-none"
+                />
 
                 <span
                     className="flex cursor-pointer text-xl text-gray-600 dark:text-white lg:hidden"

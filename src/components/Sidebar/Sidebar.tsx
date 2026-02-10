@@ -45,7 +45,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                 onClick={onClose}
             />
 
-            <div className={`fixed !z-50 flex min-h-full flex-col bg-white pb-10 shadow-2xl shadow-white/5 transition-all dark:!bg-navy-800 dark:text-white w-[290px] ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+            <div className={`fixed !z-50 flex min-h-full flex-col bg-white pb-10 shadow-2xl shadow-white/5 transition-all dark:!bg-navy-800 dark:text-white w-[290px] print:hidden ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 <span className="absolute top-4 right-4 block cursor-pointer lg:hidden" onClick={onClose}>
                     <MdClose className="h-6 w-6 text-navy-700 dark:text-white" />
                 </span>
@@ -54,8 +54,9 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                     <Image
                         src="/images/nfts/Vector 16.svg"
                         alt="Brand Logo"
-                        width={120}
+                        width={100}
                         height={122}
+                        className="max-w-[100px] h-auto"
                         priority
                     />
                 </div>

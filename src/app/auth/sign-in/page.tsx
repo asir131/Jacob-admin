@@ -10,10 +10,10 @@ const SignIn = () => {
     return (
         <div className="flex h-screen w-full overflow-hidden bg-[#00305E]">
             {/* Left Side - Sign In Card */}
-            <div className="flex w-full lg:w-1/2 items-center justify-center p-8 z-10">
-                <div className="w-full max-w-[420px] bg-white rounded-[32px] px-10 py-12 shadow-2xl">
+            <div className="flex w-full lg:w-1/2 items-center justify-center p-8 z-10 ">
+                <div className="w-full max-w-[500px] bg-white rounded-4xl px-10 py-12 shadow-2xl pb-[48px] pl-[48px] pr-[48px]">
                     {/* Logo */}
-                    <div className="flex justify-center mb-6">
+                    <div className="flex justify-center mb-6 pt-[48px] ">
                         <div className="w-[100px] h-[100px] flex items-center justify-center">
                             <Image
                                 src="/images/nfts/Vector 16.svg"
@@ -120,10 +120,10 @@ const SignIn = () => {
             {/* Right Side - Full Image */}
             <div className="hidden lg:flex lg:w-1/2 relative">
                 <Image
-                    src="/images/Image.png"
+                    src="/images/Image copy.png"
                     alt="Brand Hero Image"
                     fill
-                    className="object-cover"
+                    className="object-fill"
                     priority
                 />
             </div>
