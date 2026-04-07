@@ -1,11 +1,42 @@
+'use client';
 
-import React from 'react';
-import { MdNotificationsNone, MdInfoOutline, MdMenu } from 'react-icons/md';
-import { SearchIcon } from '../icons/SearchIcon';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { MdNotificationsNone, MdInfoOutline, MdMenu, MdChevronRight } from 'react-icons/md';
+import { useRouter } from 'next/navigation';
 import SearchInput from '../ui/SearchInput';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { markAllAsRead } from '@/store/slices/notificationSlice';
 
 const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
     const { brandText, onOpenSidebar } = props;
+    const router = useRouter();
+    const dispatch = useAppDispatch();
+    const dropdownRef = useRef<HTMLDivElement | null>(null);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const notifications = useAppSelector((state) => state.adminNotifications.items);
+    const unreadCount = useMemo(() => notifications.filter((item) => item.unread).length, [notifications]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsNotificationOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleNotifications = () => {
+        dispatch(markAllAsRead());
+        setIsNotificationOpen((current) => !current);
+    };
+
+    const openGigApprovals = () => {
+        dispatch(markAllAsRead());
+        setIsNotificationOpen(false);
+        router.push('/gig-approvals');
+    };
 
     return (
         <nav className="sticky top-4 z-40 flex flex-row flex-wrap items-center justify-between rounded-xl bg-white/10 p-2 backdrop-blur-xl dark:bg-[#0b14374d] print:hidden">
@@ -53,8 +84,86 @@ const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
                     <MdMenu className="h-5 w-5" />
                 </span>
 
-                <div className="flex h-full items-center justify-center rounded-lg px-px">
-                    <MdNotificationsNone className="h-[18px] w-[18px] text-[#A3AED0]" />
+                <div ref={dropdownRef} className="relative flex h-full items-center justify-center rounded-lg px-px">
+                    <button
+                        type="button"
+                        onClick={toggleNotifications}
+                        className="relative rounded-lg p-1 transition hover:bg-slate-50 dark:hover:bg-white/5"
+                        aria-label="Notifications"
+                    >
+                        <MdNotificationsNone className="h-[18px] w-[18px] text-[#A3AED0]" />
+                        {unreadCount > 0 ? (
+                      <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2286BE] px-1 text-[10px] font-bold text-white">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                        ) : null}
+                    </button>
+
+                    {isNotificationOpen ? (
+                        <div className="absolute top-12 right-0 z-50 w-[340px] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-2xl shadow-slate-200/50 dark:border-white/10 dark:bg-navy-800">
+                            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                                <div>
+                                    <p className="text-sm font-bold text-navy-700 dark:text-white">Notifications</p>
+                                    <p className="text-xs text-slate-400">{notifications.length} total</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        dispatch(markAllAsRead());
+                                        setIsNotificationOpen(false);
+                                    }}
+                                    className="text-xs font-bold text-[#2286BE] hover:underline"
+                                >
+                                    Mark read
+                                </button>
+                            </div>
+
+                            <div className="max-h-[360px] overflow-y-auto">
+                                {notifications.length === 0 ? (
+                                    <div className="px-4 py-8 text-center text-sm text-slate-400">
+                                        No notifications right now.
+                                    </div>
+                                ) : (
+                                    notifications.slice(0, 6).map((notification) => (
+                                        <button
+                                            key={notification.id}
+                                            type="button"
+                                            onClick={openGigApprovals}
+                                            className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5"
+                                        >
+                                            <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#2286BE]/10 text-[#2286BE]">
+                                                <MdNotificationsNone className="h-4 w-4" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <p className="truncate text-sm font-bold text-navy-700 dark:text-white">
+                                                        {notification.title}
+                                                    </p>
+                                                    <MdChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
+                                                </div>
+                                                <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-300">
+                                                    {notification.description}
+                                                </p>
+                                                <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2286BE]">
+                                                    {notification.categoryName}
+                                                </p>
+                                            </div>
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+
+                            <div className="border-t border-slate-100 px-4 py-3 dark:border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={openGigApprovals}
+                                    className="w-full rounded-2xl bg-[#2286BE] px-4 py-3 text-sm font-bold text-white transition hover:opacity-90"
+                                >
+                                    Go to Gig Approvals
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
                 <div className="flex h-full items-center justify-center rounded-lg px-px">
                     <MdInfoOutline className="h-[18px] w-[18px] text-[#A3AED0]" />

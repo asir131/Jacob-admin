@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { MdHome, MdOutlineShoppingCart, MdBarChart, MdPerson, MdLock, MdClose, MdGroup } from 'react-icons/md';
+import { MdHome, MdOutlineShoppingCart, MdBarChart, MdPerson, MdClose, MdGroup } from 'react-icons/md';
 import { IoDocuments } from "react-icons/io5";
 
 const routes = [
@@ -12,18 +12,19 @@ const routes = [
     { name: 'Providers', layout: '/admin', path: 'providers', icon: <MdPerson className="w-6 h-6" /> },
     { name: 'Customers', layout: '/admin', path: 'customers', icon: <MdGroup className="w-6 h-6" /> },
     { name: 'Services', layout: '/admin', path: 'services', icon: <IoDocuments className="w-6 h-6" /> },
+    { name: 'Gig Approvals', layout: '/admin', path: 'gig-approvals', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Transactions', layout: '/admin', path: 'transactions', icon: <MdBarChart className="w-6 h-6" /> },
     { name: 'NFT Marketplace', layout: '/admin', path: 'nft-marketplace', icon: <MdOutlineShoppingCart className="w-6 h-6" /> },
     { name: 'Profile', layout: '/admin', path: 'profile', icon: <MdPerson className="h-6 w-6" /> },
-    { name: 'Sign In', layout: '/auth', path: 'auth/sign-in', icon: <MdLock className="h-6 w-6" /> },
 ];
 
 interface SidebarProps {
     open: boolean;
     onClose: () => void;
+    onLogout: () => void;
 }
 
-const Sidebar = ({ open, onClose }: SidebarProps) => {
+const Sidebar = ({ open, onClose, onLogout }: SidebarProps) => {
     const pathname = usePathname();
 
     // Determine active route based on current pathname
@@ -89,19 +90,18 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                     ))}
                 </ul>
 
-                {/* Upgrade Card */}
+                {/* Logout Card */}
                 <div className="flex justify-center px-4">
-                    <div className="relative mt-14 w-full max-w-[228px] rounded-[20px] bg-gradient-to-br from-[#868CFF] via-brand-500 to-brand-DEFAULT pb-4 overflow-hidden">
-                        <div className="absolute -top-[24px] left-[50%] flex h-[50px] w-[50px] -translate-x-[50%] items-center justify-center rounded-full border-[4px] border-white bg-gradient-to-b from-[#868CFF] to-brand-500">
-                            <div className="h-full w-full rounded-full bg-brand-500" />
+                    <button
+                        type="button"
+                        onClick={onLogout}
+                        className="mt-14 w-full max-w-[228px] rounded-[20px] bg-[#2286BE] px-6 py-4 text-left shadow-lg shadow-[#2286BE]/20 transition hover:opacity-90"
+                    >
+                        <div className="text-sm font-bold text-white">Logout</div>
+                        <div className="mt-1 text-[10px] font-medium text-white/80">
+                            Sign out from the admin dashboard.
                         </div>
-                        <div className="mt-8 flex flex-col items-center px-4">
-                            <h4 className="text-lg font-bold text-white">Upgrade to PRO</h4>
-                            <p className="mt-1 text-center text-[10px] font-medium text-white/70">
-                                Improve your development process and start doing more with Horizon UI PRO!
-                            </p>
-                        </div>
-                    </div>
+                    </button>
                 </div>
             </div>
         </>

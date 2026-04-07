@@ -1,134 +1,207 @@
 'use client';
-import React, { useState } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { RiEyeLine, RiEyeOffLine } from 'react-icons/ri';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import {
+  storeAdminSession,
+} from '@/lib/auth';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setSession } from '@/store/slices/authSlice';
 
 const SignIn = () => {
-    const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isAuthenticated = useAppSelector((state) => Boolean(state.auth.session));
 
-    return (
-        <div className="flex h-screen w-full overflow-hidden bg-[#00305E]">
-            {/* Left Side - Sign In Card */}
-            <div className="flex w-full lg:w-1/2 items-center justify-center p-8 z-10 ">
-                <div className="w-full max-w-[500px] bg-white rounded-4xl px-10 py-12 shadow-2xl pb-[48px] pl-[48px] pr-[48px]">
-                    {/* Logo */}
-                    <div className="flex justify-center mb-6 pt-[48px] ">
-                        <div className="w-[100px] h-[100px] flex items-center justify-center">
-                            <Image
-                                src="/images/nfts/Vector 16.svg"
-                                alt="Brand Logo"
-                                width={100}
-                                height={100}
-                                priority
-                            />
-                        </div>
-                    </div>
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
 
-                    {/* Heading */}
-                    <h2 className="text-center text-3xl font-bold text-[#2286BE] mb-2">
-                        Sign In
-                    </h2>
-                    <p className="text-center text-sm text-gray-500 mb-8">
-                        Enter your email and password to sign in!
-                    </p>
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, router]);
 
-                    {/* Email */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Email*
-                        </label>
-                        <input
-                            type="email"
-                            placeholder="mail@simmmple.com"
-                            className="w-full px-4 py-3 bg-[#F4F7FE] border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#2286BE] focus:ring-1 focus:ring-[#2286BE]"
-                        />
-                    </div>
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    setIsSubmitting(true);
 
-                    {/* Password */}
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Password*
-                        </label>
-                        <div className="relative">
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="Min. 8 characters"
-                                className="w-full px-4 py-3 bg-[#F4F7FE] border border-gray-200 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#2286BE] focus:ring-1 focus:ring-[#2286BE] pr-11"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                                {showPassword ? (
-                                    <RiEyeOffLine className="w-5 h-5" />
-                                ) : (
-                                    <RiEyeLine className="w-5 h-5" />
-                                )}
-                            </button>
-                        </div>
-                    </div>
+    if (!apiBaseUrl) {
+      setError('Missing NEXT_PUBLIC_API_URL in admin dashboard environment.');
+      setIsSubmitting(false);
+      return;
+    }
 
-                    {/* Options */}
-                    <div className="flex items-center justify-between mb-6">
-                        <label className="flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="w-4 h-4 rounded border-gray-300 text-[#2286BE] focus:ring-[#2286BE]"
-                            />
-                            <span className="ml-2 text-sm text-gray-700">
-                                Keep me logged in
-                            </span>
-                        </label>
-                        <a
-                            href="#"
-                            className="text-sm text-[#2286BE] font-medium hover:opacity-80"
-                        >
-                            Forget password?
-                        </a>
-                    </div>
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
 
-                    {/* Sign In */}
-                    <button className="w-full bg-[#2286BE] hover:opacity-90 text-white font-semibold py-3 rounded-lg mb-4">
-                        Sign In
-                    </button>
+      const payload = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+        data?: {
+          accessToken: string;
+          refreshToken: string;
+          user: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+            role: string;
+          };
+        };
+      };
 
-                    {/* Register */}
-                    <p className="text-center text-sm text-gray-600 mb-6">
-                        Not registered yet?{' '}
-                        <a href="#" className="text-[#2286BE] font-medium hover:opacity-80">
-                            Create an Account
-                        </a>
-                    </p>
+      if (!response.ok || !payload.success || !payload.data) {
+        setError(payload.message || 'Invalid admin email or password.');
+        setIsSubmitting(false);
+        return;
+      }
 
-                    {/* Divider */}
-                    <div className="flex items-center mb-6">
-                        <div className="flex-1 h-px bg-gray-200" />
-                        <span className="px-4 text-sm text-gray-500">or</span>
-                        <div className="flex-1 h-px bg-gray-200" />
-                    </div>
+      if (payload.data.user.role !== 'superAdmin') {
+        setError('Only super admin can access the admin dashboard.');
+        setIsSubmitting(false);
+        return;
+      }
 
-                    {/* Google Sign In */}
-                    <button className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-3 rounded-lg flex items-center justify-center gap-2">
-                        <FcGoogle className="w-5 h-5" />
-                        Sign in with Google
-                    </button>
-                </div>
+      storeAdminSession({
+        accessToken: payload.data.accessToken,
+        refreshToken: payload.data.refreshToken,
+        user: payload.data.user,
+      });
+      dispatch(setSession({
+        accessToken: payload.data.accessToken,
+        refreshToken: payload.data.refreshToken,
+        user: payload.data.user,
+      }));
+      router.replace('/');
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Sign in failed.');
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex h-screen w-full overflow-hidden bg-[#00305E]">
+      <div className="z-10 flex w-full items-center justify-center p-8 lg:w-1/2">
+        <div className="w-full max-w-[500px] rounded-4xl bg-white px-10 pt-12 pr-[48px] pb-[48px] pl-[48px] shadow-2xl">
+          <div className="mb-6 flex justify-center pt-[48px]">
+            <div className="flex h-[100px] w-[100px] items-center justify-center">
+              <Image
+                src="/images/nfts/Vector 16.svg"
+                alt="Brand Logo"
+                width={100}
+                height={100}
+                priority
+              />
+            </div>
+          </div>
+
+          <h2 className="mb-2 text-center text-3xl font-bold text-[#2286BE]">Sign In</h2>
+          <p className="mb-8 text-center text-sm text-gray-500">
+            Enter your admin email and password to sign in.
+          </p>
+
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-gray-700">Email*</label>
+              <input
+                type="email"
+                placeholder="admin@admin.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-[#F4F7FE] px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#2286BE] focus:ring-1 focus:ring-[#2286BE] focus:outline-none"
+              />
             </div>
 
-            {/* Right Side - Full Image */}
-            <div className="hidden lg:flex lg:w-1/2 relative">
-                <Image
-                    src="/images/Image copy.png"
-                    alt="Brand Hero Image"
-                    fill
-                    className="object-fill"
-                    priority
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-gray-700">Password*</label>
+              <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-[#F4F7FE] px-4 py-3 pr-11 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#2286BE] focus:ring-1 focus:ring-[#2286BE] focus:outline-none"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <RiEyeOffLine className="h-5 w-5" /> : <RiEyeLine className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
+
+            <div className="mb-6 flex items-center justify-between">
+              <label className="flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  defaultChecked
+                  className="h-4 w-4 rounded border-gray-300 text-[#2286BE] focus:ring-[#2286BE]"
+                />
+                <span className="ml-2 text-sm text-gray-700">Keep me logged in</span>
+              </label>
+              <span className="text-sm font-medium text-[#2286BE]">Admin access only</span>
+            </div>
+
+            {error ? <p className="mb-4 text-sm font-medium text-red-500">{error}</p> : null}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="mb-4 w-full rounded-lg bg-[#2286BE] py-3 font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? 'Signing In...' : 'Sign In'}
+            </button>
+          </form>
+
+          <p className="mb-6 text-center text-sm text-gray-600">
+            Admin credentials are now controlled from the backend environment.
+          </p>
+
+          <div className="mb-6 flex items-center">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="px-4 text-sm text-gray-500">or</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
+          <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-3 font-medium text-gray-700 hover:bg-gray-50">
+            <FcGoogle className="h-5 w-5" />
+            Sign in with Google
+          </button>
         </div>
-    );
+      </div>
+
+      <div className="relative hidden lg:flex lg:w-1/2">
+        <Image
+          src="/images/Image copy.png"
+          alt="Brand Hero Image"
+          fill
+          className="object-fill"
+          priority
+        />
+      </div>
+    </div>
+  );
 };
 
 export default SignIn;
