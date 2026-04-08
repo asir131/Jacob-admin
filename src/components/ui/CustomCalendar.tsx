@@ -1,16 +1,17 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
 
 interface CustomCalendarProps {
     selectedDate: Date | null;
+    viewDate: Date;
+    onPrevMonth: () => void;
+    onNextMonth: () => void;
     onDateSelect: (date: Date) => void;
     className?: string;
 }
 
-const CustomCalendar: React.FC<CustomCalendarProps> = ({ selectedDate, onDateSelect, className = "" }) => {
-    const [viewDate, setViewDate] = useState(selectedDate || new Date());
-
+const CustomCalendar: React.FC<CustomCalendarProps> = ({ selectedDate, viewDate, onPrevMonth, onNextMonth, onDateSelect, className = "" }) => {
     const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
     const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
@@ -21,9 +22,6 @@ const CustomCalendar: React.FC<CustomCalendarProps> = ({ selectedDate, onDateSel
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
-
-    const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
-    const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
     const days = [];
     const totalDays = daysInMonth(year, month);
@@ -68,10 +66,10 @@ const CustomCalendar: React.FC<CustomCalendarProps> = ({ selectedDate, onDateSel
                     {monthNames[month]} {year}
                 </p>
                 <div className="flex gap-1">
-                    <button onClick={prevMonth} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 dark:text-white transition-colors">
+                    <button onClick={onPrevMonth} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 dark:text-white transition-colors">
                         <MdChevronLeft className="h-5 w-5" />
                     </button>
-                    <button onClick={nextMonth} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 dark:text-white transition-colors">
+                    <button onClick={onNextMonth} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 dark:text-white transition-colors">
                         <MdChevronRight className="h-5 w-5" />
                     </button>
                 </div>

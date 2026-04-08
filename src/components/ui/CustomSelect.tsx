@@ -1,6 +1,8 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useId } from 'react';
 import { MdExpandMore } from 'react-icons/md';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setSelectOpen } from '@/store/slices/adminUiSlice';
 
 interface Option {
     label: string;
@@ -13,23 +15,27 @@ interface CustomSelectProps {
     onChange: (value: string | number) => void;
     label?: string;
     className?: string;
+    stateKey?: string;
 }
 
-const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, label, className = "" }) => {
-    const [isOpen, setIsOpen] = useState(false);
+const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, label, className = "", stateKey }) => {
+    const dispatch = useAppDispatch();
+    const generatedId = useId();
+    const selectId = stateKey || `select-${generatedId}`;
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const isOpen = useAppSelector((state) => state.adminUi.selectOpenById[selectId] || false);
 
     const selectedOption = options.find(opt => opt.value === value) || options[0];
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+                dispatch(setSelectOpen({ id: selectId, open: false }));
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [dispatch, selectId]);
 
     return (
         <div className={`flex flex-col gap-1 ${className}`} ref={dropdownRef}>
@@ -37,7 +43,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, l
             <div className="relative">
                 <button
                     type="button"
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={() => dispatch(setSelectOpen({ id: selectId, open: !isOpen }))}
                     className="flex items-center justify-between w-full h-[46px] px-4 rounded-full bg-lightPrimary dark:bg-navy-900 border border-gray-100 dark:border-white/5 text-sm font-medium text-navy-700 dark:text-white transition-all hover:bg-gray-50 dark:hover:bg-navy-800 outline-none"
                 >
                     <span className="truncate">{selectedOption?.label}</span>
@@ -53,7 +59,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, l
                                     type="button"
                                     onClick={() => {
                                         onChange(option.value);
-                                        setIsOpen(false);
+                                        dispatch(setSelectOpen({ id: selectId, open: false }));
                                     }}
                                     className={`flex items-center w-full px-4 py-2 text-sm text-start transition-colors hover:bg-gray-50 dark:hover:bg-white/5 ${option.value === value ? 'bg-brand-50 text-brand-500 font-bold dark:bg-brand-500/10' : 'text-navy-700 dark:text-white'
                                         }`}

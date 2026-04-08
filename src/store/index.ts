@@ -2,12 +2,22 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
 import notificationsReducer from './slices/notificationSlice';
+import adminUiReducer from './slices/adminUiSlice';
+import tableStateReducer from './slices/tableStateSlice';
+import signInReducer from './slices/signInSlice';
+import gigApprovalsReducer from './slices/gigApprovalsSlice';
+import providerVerificationReducer from './slices/providerVerificationSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     ui: uiReducer,
     adminNotifications: notificationsReducer,
+    adminUi: adminUiReducer,
+    tableState: tableStateReducer,
+    signIn: signInReducer,
+    gigApprovals: gigApprovalsReducer,
+    providerVerification: providerVerificationReducer,
   },
 });
 

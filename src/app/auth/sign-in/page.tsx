@@ -1,24 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { RiEyeLine, RiEyeOffLine } from 'react-icons/ri';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import {
-  storeAdminSession,
-} from '@/lib/auth';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setSession } from '@/store/slices/authSlice';
+import { setEmail, setPassword, setShowPassword, submitAdminLogin } from '@/store/slices/signInSlice';
 
 const SignIn = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showPassword, email, password, error, isSubmitting } = useAppSelector((state) => state.signIn);
   const isAuthenticated = useAppSelector((state) => Boolean(state.auth.session));
 
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -31,70 +25,17 @@ const SignIn = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError('');
-    setIsSubmitting(true);
+    const resultAction = await dispatch(
+      submitAdminLogin({
+        apiBaseUrl: apiBaseUrl || '',
+        email,
+        password,
+      })
+    );
 
-    if (!apiBaseUrl) {
-      setError('Missing NEXT_PUBLIC_API_URL in admin dashboard environment.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      });
-
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: {
-          accessToken: string;
-          refreshToken: string;
-          user: {
-            id: string;
-            firstName: string;
-            lastName: string;
-            email: string;
-            role: string;
-          };
-        };
-      };
-
-      if (!response.ok || !payload.success || !payload.data) {
-        setError(payload.message || 'Invalid admin email or password.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (payload.data.user.role !== 'superAdmin') {
-        setError('Only super admin can access the admin dashboard.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      storeAdminSession({
-        accessToken: payload.data.accessToken,
-        refreshToken: payload.data.refreshToken,
-        user: payload.data.user,
-      });
-      dispatch(setSession({
-        accessToken: payload.data.accessToken,
-        refreshToken: payload.data.refreshToken,
-        user: payload.data.user,
-      }));
+    if (submitAdminLogin.fulfilled.match(resultAction)) {
+      dispatch(setSession(resultAction.payload));
       router.replace('/');
-    } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : 'Sign in failed.');
-      setIsSubmitting(false);
     }
   };
 
@@ -126,7 +67,7 @@ const SignIn = () => {
                 type="email"
                 placeholder="admin@admin.com"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => dispatch(setEmail(event.target.value))}
                 className="w-full rounded-lg border border-gray-200 bg-[#F4F7FE] px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#2286BE] focus:ring-1 focus:ring-[#2286BE] focus:outline-none"
               />
             </div>
@@ -138,12 +79,12 @@ const SignIn = () => {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => dispatch(setPassword(event.target.value))}
                   className="w-full rounded-lg border border-gray-200 bg-[#F4F7FE] px-4 py-3 pr-11 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#2286BE] focus:ring-1 focus:ring-[#2286BE] focus:outline-none"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => dispatch(setShowPassword(!showPassword))}
                   className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <RiEyeOffLine className="h-5 w-5" /> : <RiEyeLine className="h-5 w-5" />}

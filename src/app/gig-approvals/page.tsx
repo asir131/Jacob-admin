@@ -1,8 +1,18 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
-import { useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  approveGigRequest,
+  clearNotice,
+  clearSelectedIcon,
+  fetchPendingGigApprovals,
+  rejectGigRequest,
+  setRejectionReason,
+  setSelectedIcon,
+  setSelectedRequestId,
+} from '@/store/slices/gigApprovalsSlice';
 import {
   MdAddCircleOutline,
   MdBrush,
@@ -26,39 +36,6 @@ import {
   MdImage,
   MdInventory2,
 } from 'react-icons/md';
-
-type PendingGigRequest = {
-  _id: string;
-  title: string;
-  categorySlug: string;
-  categoryName: string;
-  customCategoryName?: string;
-  customCategoryDescription?: string;
-  customCategoryIconName?: string;
-  description?: string;
-  requirements?: string;
-  packages?: Array<{
-    name?: string;
-    title?: string;
-    description?: string;
-    deliveryTime?: string;
-    price?: number;
-  }>;
-  images?: string[];
-  baseCity?: string;
-  locationLat?: number | null;
-  locationLng?: number | null;
-  travelRadiusKm?: number | null;
-  status?: string;
-  createdAt?: string;
-  rejectionReason?: string;
-  providerId?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    role?: string;
-  };
-};
 
 const ICONS: Record<string, React.ReactNode> = {
   ShieldCheck: <MdVerified className="h-5 w-5" />,
@@ -89,15 +66,11 @@ const formatDate = (value?: string) => {
 };
 
 export default function GigApprovalsPage() {
+  const dispatch = useAppDispatch();
   const apiBase = process.env.NEXT_PUBLIC_API_URL;
-  const [adminToken, setAdminToken] = useState('');
-  const [pendingRequests, setPendingRequests] = useState<PendingGigRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [selectedRequestId, setSelectedRequestId] = useState<string>('');
-  const [selectedIcons, setSelectedIcons] = useState<Record<string, string>>({});
-  const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
-  const [busyRequestId, setBusyRequestId] = useState<string>('');
+  const adminToken = useAppSelector((state) => state.auth.session?.accessToken || '');
+  const { pendingRequests, loading, notice, selectedRequestId, selectedIcons, rejectionReasons, busyRequestId } =
+    useAppSelector((state) => state.gigApprovals);
   const latestNotificationCount = useAppSelector((state) => state.adminNotifications.items.length);
 
   const selectedRequest = useMemo(
@@ -105,142 +78,18 @@ export default function GigApprovalsPage() {
     [pendingRequests, selectedRequestId]
   );
 
-  const showNotice = (type: 'success' | 'error', message: string) => {
-    setNotice({ type, message });
-    window.setTimeout(() => setNotice(null), 3000);
-  };
-
-  const loadRequests = useCallback(async () => {
-    if (!apiBase) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch(`${apiBase}/api/gigs/pending`, {
-        headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : undefined,
-      });
-      const payload = await response.json();
-
-      if (!response.ok || !payload?.success) {
-        showNotice('error', payload?.message || 'Could not load pending approvals.');
-        setPendingRequests([]);
-        return;
-      }
-
-      const requests = Array.isArray(payload.data) ? payload.data : [];
-      setPendingRequests(requests);
-      setSelectedRequestId((current) => {
-        if (current && requests.some((request: PendingGigRequest) => request._id === current)) {
-          return current;
-        }
-        return requests[0]?._id || '';
-      });
-    } catch {
-      showNotice('error', 'Could not load pending approvals.');
-    } finally {
-      setLoading(false);
-    }
-  }, [adminToken, apiBase]);
-
-  useEffect(() => {
-    const token = localStorage.getItem('admin_dashboard_token') || '';
-    setAdminToken(token);
-  }, []);
-
   useEffect(() => {
     if (!adminToken) {
-      setLoading(false);
       return;
     }
+    void dispatch(fetchPendingGigApprovals({ apiBase: apiBase || '', adminToken }));
+  }, [adminToken, apiBase, dispatch, latestNotificationCount]);
 
-    void loadRequests();
-  }, [adminToken, loadRequests, latestNotificationCount]);
-
-  const approveRequest = async (id: string) => {
-    if (!apiBase) return;
-
-    setBusyRequestId(id);
-    try {
-      const response = await fetch(`${apiBase}/api/gigs/${id}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
-        },
-        body: JSON.stringify({
-          iconName: selectedIcons[id] || '',
-        }),
-      });
-      const payload = await response.json();
-
-      if (!response.ok || !payload?.success) {
-        showNotice('error', payload?.message || 'Could not approve request.');
-        return;
-      }
-
-      showNotice('success', 'Approved and added to categories.');
-      setPendingRequests((prev) => prev.filter((request) => request._id !== id));
-      setSelectedIcons((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setRejectionReasons((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setSelectedRequestId((current) => (current === id ? '' : current));
-    } catch {
-      showNotice('error', 'Could not approve request.');
-    } finally {
-      setBusyRequestId('');
-    }
-  };
-
-  const rejectRequest = async (id: string) => {
-    if (!apiBase) return;
-
-    setBusyRequestId(id);
-    try {
-      const response = await fetch(`${apiBase}/api/gigs/${id}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
-        },
-        body: JSON.stringify({
-          rejectionReason: rejectionReasons[id] || '',
-        }),
-      });
-      const payload = await response.json();
-
-      if (!response.ok || !payload?.success) {
-        showNotice('error', payload?.message || 'Could not reject request.');
-        return;
-      }
-
-      showNotice('success', 'Gig request rejected.');
-      setPendingRequests((prev) => prev.filter((request) => request._id !== id));
-      setSelectedIcons((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setRejectionReasons((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setSelectedRequestId((current) => (current === id ? '' : current));
-    } catch {
-      showNotice('error', 'Could not reject request.');
-    } finally {
-      setBusyRequestId('');
-    }
-  };
+  useEffect(() => {
+    if (!notice) return;
+    const timeoutId = window.setTimeout(() => dispatch(clearNotice()), 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [dispatch, notice]);
 
   return (
     <AdminLayout>
@@ -272,7 +121,7 @@ export default function GigApprovalsPage() {
 
             <button
               type="button"
-              onClick={() => void loadRequests()}
+              onClick={() => void dispatch(fetchPendingGigApprovals({ apiBase: apiBase || '', adminToken }))}
               className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#2286BE]/20 bg-[#2286BE]/5 px-4 text-sm font-semibold text-[#2286BE] transition hover:bg-[#2286BE]/10"
             >
               <MdRefresh className="h-4 w-4" />
@@ -326,7 +175,7 @@ export default function GigApprovalsPage() {
                   <button
                     key={request._id}
                     type="button"
-                    onClick={() => setSelectedRequestId(request._id)}
+                    onClick={() => dispatch(setSelectedRequestId(request._id))}
                     className={`w-full rounded-[24px] border p-5 text-left shadow-sm transition ${
                       isActive
                         ? 'border-[#2286BE] bg-white ring-2 ring-[#2286BE]/10 dark:bg-navy-800'
@@ -499,11 +348,7 @@ export default function GigApprovalsPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        setSelectedIcons((prev) => {
-                          const next = { ...prev };
-                          delete next[selectedRequest._id];
-                          return next;
-                        })
+                        dispatch(clearSelectedIcon(selectedRequest._id))
                       }
                       className="rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-500 transition hover:border-[#2286BE]/40 hover:text-[#2286BE]"
                     >
@@ -519,10 +364,7 @@ export default function GigApprovalsPage() {
                           key={iconName}
                           type="button"
                           onClick={() =>
-                            setSelectedIcons((prev) => ({
-                              ...prev,
-                              [selectedRequest._id]: iconName,
-                            }))
+                            dispatch(setSelectedIcon({ requestId: selectedRequest._id, iconName }))
                           }
                           className={`flex h-12 items-center justify-center rounded-xl border transition ${
                             isSelected
@@ -543,10 +385,7 @@ export default function GigApprovalsPage() {
                   <textarea
                     value={rejectionReasons[selectedRequest._id] || ''}
                     onChange={(event) =>
-                      setRejectionReasons((prev) => ({
-                        ...prev,
-                        [selectedRequest._id]: event.target.value,
-                      }))
+                      dispatch(setRejectionReason({ requestId: selectedRequest._id, value: event.target.value }))
                     }
                     placeholder="Optional reason for rejection..."
                     rows={3}
@@ -557,7 +396,16 @@ export default function GigApprovalsPage() {
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
-                    onClick={() => void approveRequest(selectedRequest._id)}
+                    onClick={() =>
+                      void dispatch(
+                        approveGigRequest({
+                          apiBase: apiBase || '',
+                          adminToken,
+                          id: selectedRequest._id,
+                          iconName: selectedIcons[selectedRequest._id] || '',
+                        })
+                      )
+                    }
                     disabled={busyRequestId === selectedRequest._id}
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#2286BE] px-5 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -566,7 +414,16 @@ export default function GigApprovalsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void rejectRequest(selectedRequest._id)}
+                    onClick={() =>
+                      void dispatch(
+                        rejectGigRequest({
+                          apiBase: apiBase || '',
+                          adminToken,
+                          id: selectedRequest._id,
+                          rejectionReason: rejectionReasons[selectedRequest._id] || '',
+                        })
+                      )
+                    }
                     disabled={busyRequestId === selectedRequest._id}
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-red-200 px-5 text-sm font-bold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-500/10"
                   >

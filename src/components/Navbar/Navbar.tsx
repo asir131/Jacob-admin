@@ -1,41 +1,42 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { MdNotificationsNone, MdInfoOutline, MdMenu, MdChevronRight } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import SearchInput from '../ui/SearchInput';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { markAllAsRead } from '@/store/slices/notificationSlice';
+import { setNotificationDropdownOpen } from '@/store/slices/adminUiSlice';
 
 const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
     const { brandText, onOpenSidebar } = props;
     const router = useRouter();
     const dispatch = useAppDispatch();
     const dropdownRef = useRef<HTMLDivElement | null>(null);
-    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const isNotificationOpen = useAppSelector((state) => state.adminUi.notificationDropdownOpen);
     const notifications = useAppSelector((state) => state.adminNotifications.items);
     const unreadCount = useMemo(() => notifications.filter((item) => item.unread).length, [notifications]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsNotificationOpen(false);
+                dispatch(setNotificationDropdownOpen(false));
             }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [dispatch]);
 
     const toggleNotifications = () => {
         dispatch(markAllAsRead());
-        setIsNotificationOpen((current) => !current);
+        dispatch(setNotificationDropdownOpen(!isNotificationOpen));
     };
 
-    const openGigApprovals = () => {
+    const openNotificationTarget = (targetPath?: string) => {
         dispatch(markAllAsRead());
-        setIsNotificationOpen(false);
-        router.push('/gig-approvals');
+        dispatch(setNotificationDropdownOpen(false));
+        router.push(targetPath || '/gig-approvals');
     };
 
     return (
@@ -110,7 +111,7 @@ const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
                                     type="button"
                                     onClick={() => {
                                         dispatch(markAllAsRead());
-                                        setIsNotificationOpen(false);
+                                        dispatch(setNotificationDropdownOpen(false));
                                     }}
                                     className="text-xs font-bold text-[#2286BE] hover:underline"
                                 >
@@ -128,7 +129,7 @@ const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
                                         <button
                                             key={notification.id}
                                             type="button"
-                                            onClick={openGigApprovals}
+                                            onClick={() => openNotificationTarget(notification.targetPath)}
                                             className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5"
                                         >
                                             <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#2286BE]/10 text-[#2286BE]">
@@ -156,10 +157,10 @@ const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
                             <div className="border-t border-slate-100 px-4 py-3 dark:border-white/10">
                                 <button
                                     type="button"
-                                    onClick={openGigApprovals}
+                                    onClick={() => openNotificationTarget('/gig-approvals')}
                                     className="w-full rounded-2xl bg-[#2286BE] px-4 py-3 text-sm font-bold text-white transition hover:opacity-90"
                                 >
-                                    Go to Gig Approvals
+                                    Open Approvals
                                 </button>
                             </div>
                         </div>

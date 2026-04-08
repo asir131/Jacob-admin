@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import { MdClose, MdOutlineNotificationsActive, MdVerified } from 'react-icons/md';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { pushNotification } from '@/store/slices/notificationSlice';
+import { pushNotification, setRealtimeVisible, setSocketConnected } from '@/store/slices/notificationSlice';
 
 type ApprovalNotification = {
   id: string;
@@ -13,6 +13,9 @@ type ApprovalNotification = {
   description: string;
   categoryName: string;
   providerName: string;
+  notificationType?: string;
+  providerId?: string;
+  targetPath?: string;
   createdAt: string;
 };
 
@@ -33,7 +36,12 @@ type SocketNotificationEvent = {
   id?: string;
   title?: string;
   description?: string;
+  type?: string;
   data?: {
+    notificationType?: string;
+    providerId?: string;
+    providerName?: string;
+    targetPath?: string;
     customCategoryName?: string;
     categoryName?: string;
   } | null;
@@ -43,9 +51,9 @@ type SocketNotificationEvent = {
 const ADMIN_TOKEN_KEY = 'admin_dashboard_token';
 export default function AdminRealtimeNotifications() {
   const dispatch = useAppDispatch();
-  const notifications = useAppSelector((state) => state.adminNotifications.items);
-  const [socketConnected, setSocketConnected] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const { items: notifications, socketConnected, realtimeVisible: isVisible } = useAppSelector(
+    (state) => state.adminNotifications
+  );
 
   const socketUrl = useMemo(() => {
     return process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || '';
@@ -66,11 +74,11 @@ export default function AdminRealtimeNotifications() {
     });
 
     socket.on('connect', () => {
-      setSocketConnected(true);
+      dispatch(setSocketConnected(true));
     });
 
     socket.on('disconnect', () => {
-      setSocketConnected(false);
+      dispatch(setSocketConnected(false));
     });
 
     socket.on('gig:approval:requested', (event: GigApprovalEvent) => {
@@ -81,33 +89,52 @@ export default function AdminRealtimeNotifications() {
         description: `${providerName} submitted ${event.customCategoryName || event.categoryName || 'a custom category'} for approval.`,
         categoryName: event.customCategoryName || event.categoryName || 'Custom category',
         providerName,
+        notificationType: 'gig_approval_request',
+        targetPath: '/gig-approvals',
         createdAt: event.createdAt || new Date().toISOString(),
       };
 
       dispatch(pushNotification({ ...notification, unread: true }));
-      setIsVisible(true);
+      dispatch(setRealtimeVisible(true));
     });
 
     socket.on('notification:new', (event: SocketNotificationEvent) => {
-      const maybeCategoryName = event.data?.customCategoryName || event.data?.categoryName || 'Custom category';
-      if ((event.title || '').toLowerCase().includes('custom category') || maybeCategoryName) {
-        const notification: ApprovalNotification = {
-          id: event.id || `notification-${Date.now()}`,
-          title: event.title || 'New custom category request',
-          description: event.description || 'A provider submitted a custom category for approval.',
-          categoryName: maybeCategoryName,
-          providerName: 'System',
-          createdAt: event.createdAt || new Date().toISOString(),
-        };
+      const notificationType = event.data?.notificationType || '';
+      const isGigApproval =
+        notificationType === 'gig_approval_request' ||
+        String(event.title || '').toLowerCase().includes('custom category');
+      const isProviderVerification = notificationType === 'provider_verification_request';
 
-        dispatch(pushNotification({ ...notification, unread: true }));
-        setIsVisible(true);
-      }
+      if (!isGigApproval && !isProviderVerification) return;
+
+      const notification: ApprovalNotification = {
+        id: event.id || `notification-${Date.now()}`,
+        title:
+          event.title ||
+          (isProviderVerification ? 'Provider verification requested' : 'New custom category request'),
+        description:
+          event.description ||
+          (isProviderVerification
+            ? 'A provider submitted payout + NID verification request.'
+            : 'A provider submitted a custom category for approval.'),
+        categoryName:
+          event.data?.customCategoryName ||
+          event.data?.categoryName ||
+          (isProviderVerification ? 'Provider verification' : 'Custom category'),
+        providerName: event.data?.providerName || 'System',
+        notificationType: isProviderVerification ? 'provider_verification_request' : 'gig_approval_request',
+        providerId: event.data?.providerId,
+        targetPath: event.data?.targetPath || (isProviderVerification ? '/provider-verifications' : '/gig-approvals'),
+        createdAt: event.createdAt || new Date().toISOString(),
+      };
+
+      dispatch(pushNotification({ ...notification, unread: true }));
+      dispatch(setRealtimeVisible(true));
     });
 
     return () => {
       socket.disconnect();
-      setSocketConnected(false);
+      dispatch(setSocketConnected(false));
     };
   }, [dispatch, socketUrl]);
 
@@ -142,7 +169,7 @@ export default function AdminRealtimeNotifications() {
 
             <button
               type="button"
-              onClick={() => setIsVisible(false)}
+              onClick={() => dispatch(setRealtimeVisible(false))}
               className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/10"
               aria-label="Dismiss approval alert"
             >
@@ -156,7 +183,7 @@ export default function AdminRealtimeNotifications() {
               {notifications[0].categoryName}
             </div>
             <Link
-              href="/gig-approvals"
+              href={notifications[0].targetPath || '/gig-approvals'}
               className="pointer-events-auto rounded-xl bg-[#2286BE] px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
             >
               Review now

@@ -13,6 +13,7 @@ const routes = [
     { name: 'Customers', layout: '/admin', path: 'customers', icon: <MdGroup className="w-6 h-6" /> },
     { name: 'Services', layout: '/admin', path: 'services', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Gig Approvals', layout: '/admin', path: 'gig-approvals', icon: <IoDocuments className="w-6 h-6" /> },
+    { name: 'Provider Verification', layout: '/admin', path: 'provider-verifications', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Transactions', layout: '/admin', path: 'transactions', icon: <MdBarChart className="w-6 h-6" /> },
     { name: 'NFT Marketplace', layout: '/admin', path: 'nft-marketplace', icon: <MdOutlineShoppingCart className="w-6 h-6" /> },
     { name: 'Profile', layout: '/admin', path: 'profile', icon: <MdPerson className="h-6 w-6" /> },
@@ -78,7 +79,7 @@ const Sidebar = ({ open, onClose, onLogout }: SidebarProps) => {
                                     <span className={`${activeRoute === route.name ? "font-bold text-brand-500" : "font-medium text-gray-400 group-hover:text-brand-500"}`}>
                                         {route.icon}
                                     </span>
-                                    <p className={`leading-1 ml-4 flex ${activeRoute === route.name ? "font-bold text-navy-700 dark:text-white" : "font-medium text-gray-400 group-hover:text-navy-700 dark:group-hover:text-white"}`}>
+                                    <p className={`ml-4 block text-sm leading-5 whitespace-nowrap ${activeRoute === route.name ? "font-bold text-navy-700 dark:text-white" : "font-medium text-gray-400 group-hover:text-navy-700 dark:group-hover:text-white"}`}>
                                         {route.name}
                                     </p>
                                 </div>

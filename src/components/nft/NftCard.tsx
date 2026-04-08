@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import { IoHeart, IoHeartOutline } from "react-icons/io5";
 import Card from "@/components/Card"; // Assuming a Card component exists, check import path
-import Image from "next/image";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setNftLiked } from "@/store/slices/adminUiSlice";
 
 interface NftCardProps {
     title: string;
@@ -10,10 +11,13 @@ interface NftCardProps {
     image: string;
     bidders?: string[];
     extra?: string;
+    cardId?: string;
 }
 
-const NftCard = ({ title, author, price, image, bidders, extra }: NftCardProps) => {
-    const [heart, setHeart] = useState(true);
+const NftCard = ({ title, author, price, image, bidders, extra, cardId }: NftCardProps) => {
+    const dispatch = useAppDispatch();
+    const resolvedCardId = useMemo(() => cardId || `${title}-${author}-${image}`, [author, cardId, image, title]);
+    const heart = useAppSelector((state) => state.adminUi.nftLikedById[resolvedCardId] ?? true);
 
     return (
         <Card extra={`flex flex-col w-full h-full !p-3 3xl:p-![18px] bg-white dark:bg-navy-800 ${extra}`}>
@@ -27,7 +31,7 @@ const NftCard = ({ title, author, price, image, bidders, extra }: NftCardProps) 
                         />
                     </div>
                     <button
-                        onClick={() => setHeart(!heart)}
+                        onClick={() => dispatch(setNftLiked({ id: resolvedCardId, liked: !heart }))}
                         className="absolute top-3 right-3 flex items-center justify-center rounded-full bg-white p-2 text-brand-500 hover:cursor-pointer shadow-sm transition-all hover:shadow-lg"
                     >
                         <div className="flex h-full w-full items-center justify-center rounded-full text-xl">

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import Card from '@/components/Card/Card';
 import { MdCheckCircle, MdCancel, MdDownload, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import Link from 'next/link';
@@ -7,6 +7,18 @@ import { downloadCSV } from '@/utils/exportUtils';
 import SearchInput from '@/components/ui/SearchInput';
 import CustomSelect from '@/components/ui/CustomSelect';
 import CustomDatePicker from '@/components/ui/CustomDatePicker';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  resetCustomerTableState,
+  setCustomerCurrentPage,
+  setCustomerCustomRange,
+  setCustomerLocationFilter,
+  setCustomerReportModal,
+  setCustomerRowsPerPage,
+  setCustomerSearchQuery,
+  setCustomerStatusFilter,
+  setCustomerTimeFilter,
+} from '@/store/slices/tableStateSlice';
 
 type RowObj = {
   id: string;
@@ -22,20 +34,9 @@ type RowObj = {
 
 const CustomerTable = (props: { tableData: RowObj[] }) => {
   const { tableData } = props;
-
-  // State for filtering
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [locationFilter, setLocationFilter] = useState('All');
-  const [timeFilter, setTimeFilter] = useState('All');
-  const [customRange, setCustomRange] = useState({ start: '', end: '' });
-
-  // State for pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  // State for Report Modal
-  const [showReportModal, setShowReportModal] = useState(false);
+  const dispatch = useAppDispatch();
+  const { searchQuery, statusFilter, locationFilter, timeFilter, customRange, currentPage, rowsPerPage, showReportModal } =
+    useAppSelector((state) => state.tableState.customer);
 
   // Extract unique locations for filter
   const locations = useMemo(() => ['All', ...new Set(tableData.map(r => r.location))], [tableData]);
@@ -87,16 +88,11 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
     } else {
       window.print();
     }
-    setShowReportModal(false);
+    dispatch(setCustomerReportModal(false));
   };
 
   const handleReset = () => {
-    setSearchQuery('');
-    setStatusFilter('All');
-    setLocationFilter('All');
-    setTimeFilter('All');
-    setCustomRange({ start: '', end: '' });
-    setCurrentPage(1);
+    dispatch(resetCustomerTableState());
   };
 
   const timeOptions = [
@@ -129,7 +125,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
               </button>
             )}
             <button
-              onClick={() => setShowReportModal(true)}
+              onClick={() => dispatch(setCustomerReportModal(true))}
               className="flex items-center gap-2 rounded-full bg-brand-500 px-6 py-3 text-white transition-all duration-300 hover:bg-brand-600 active:scale-95 shadow-lg shadow-brand-500/20"
             >
               <MdDownload className="h-5 w-5" />
@@ -146,7 +142,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
             <SearchInput
               placeholder="Search name, email or location..."
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => dispatch(setCustomerSearchQuery(e.target.value))}
             />
           </div>
 
@@ -156,7 +152,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
               label="Time period"
               options={timeOptions}
               value={timeFilter}
-              onChange={(val) => { setTimeFilter(val as string); setCurrentPage(1); }}
+              onChange={(val) => dispatch(setCustomerTimeFilter(val as string))}
             />
           </div>
 
@@ -166,13 +162,13 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
               <CustomDatePicker
                 label="From"
                 value={customRange.start}
-                onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
+                onChange={(e) => dispatch(setCustomerCustomRange({ ...customRange, start: e.target.value }))}
               />
               <div className="mt-6 text-gray-400 font-bold">to</div>
               <CustomDatePicker
                 label="To"
                 value={customRange.end}
-                onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
+                onChange={(e) => dispatch(setCustomerCustomRange({ ...customRange, end: e.target.value }))}
               />
             </div>
           )}
@@ -183,7 +179,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
               label="Status"
               options={statusOptions}
               value={statusFilter}
-              onChange={(val) => { setStatusFilter(val as string); setCurrentPage(1); }}
+              onChange={(val) => dispatch(setCustomerStatusFilter(val as string))}
             />
           </div>
 
@@ -193,7 +189,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
               label="Location"
               options={locationOptions}
               value={locationFilter}
-              onChange={(val) => { setLocationFilter(val as string); setCurrentPage(1); }}
+              onChange={(val) => dispatch(setCustomerLocationFilter(val as string))}
             />
           </div>
 
@@ -203,7 +199,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
               label="Rows"
               options={rowsOptions}
               value={rowsPerPage}
-              onChange={(val) => { setRowsPerPage(Number(val)); setCurrentPage(1); }}
+              onChange={(val) => dispatch(setCustomerRowsPerPage(Number(val)))}
             />
           </div>
         </div>
@@ -281,7 +277,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
         </p>
         <div className="flex gap-2">
           <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            onClick={() => dispatch(setCustomerCurrentPage(Math.max(1, currentPage - 1)))}
             disabled={currentPage === 1}
             className={`flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 transition-all hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5 ${currentPage === 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
           >
@@ -291,7 +287,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
             <React.Fragment key={p}>
               {i > 0 && arr[i - 1] !== p - 1 && <span className="px-1 text-gray-400">...</span>}
               <button
-                onClick={() => setCurrentPage(p)}
+                onClick={() => dispatch(setCustomerCurrentPage(p))}
                 className={`h-9 w-9 rounded-lg text-sm font-bold transition-all ${currentPage === p ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30' : 'text-gray-600 hover:bg-gray-100 dark:text-white dark:hover:bg-white/10'}`}
               >
                 {p}
@@ -299,7 +295,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
             </React.Fragment>
           ))}
           <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            onClick={() => dispatch(setCustomerCurrentPage(Math.min(totalPages, currentPage + 1)))}
             disabled={currentPage === totalPages || totalPages === 0}
             className={`flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 transition-all hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5 ${currentPage === totalPages || totalPages === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
           >
@@ -330,7 +326,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
           <div className="w-full max-w-4xl bg-white dark:bg-navy-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none">
             <header className="p-6 border-b border-gray-100 dark:border-white/10 flex items-center justify-between print:hidden">
               <h3 className="text-xl font-bold text-navy-700 dark:text-white">Report Preview</h3>
-              <button onClick={() => setShowReportModal(false)} className="text-gray-400 hover:text-red-500">
+              <button onClick={() => dispatch(setCustomerReportModal(false))} className="text-gray-400 hover:text-red-500">
                 <MdCancel className="h-6 w-6" />
               </button>
             </header>
@@ -373,7 +369,7 @@ const CustomerTable = (props: { tableData: RowObj[] }) => {
             </div>
             <footer className="p-6 bg-gray-50 dark:bg-navy-900 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-4 print:hidden">
               <button
-                onClick={() => setShowReportModal(false)}
+                onClick={() => dispatch(setCustomerReportModal(false))}
                 className="px-6 py-2 rounded-lg text-sm font-bold text-gray-600 hover:text-navy-700 dark:text-gray-300 dark:hover:text-white transition-colors"
               >
                 Cancel

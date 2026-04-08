@@ -6,16 +6,23 @@ export type AdminNotification = {
   description: string;
   categoryName: string;
   providerName: string;
+  notificationType?: string;
+  providerId?: string;
+  targetPath?: string;
   createdAt: string;
   unread: boolean;
 };
 
 type NotificationState = {
   items: AdminNotification[];
+  socketConnected: boolean;
+  realtimeVisible: boolean;
 };
 
 const initialState: NotificationState = {
   items: [],
+  socketConnected: false,
+  realtimeVisible: true,
 };
 
 const notificationSlice = createSlice({
@@ -34,6 +41,12 @@ const notificationSlice = createSlice({
     removeNotification: (state, action: PayloadAction<string>) => {
       state.items = state.items.filter((item) => item.id !== action.payload);
     },
+    setSocketConnected: (state, action: PayloadAction<boolean>) => {
+      state.socketConnected = action.payload;
+    },
+    setRealtimeVisible: (state, action: PayloadAction<boolean>) => {
+      state.realtimeVisible = action.payload;
+    },
   },
 });
 
@@ -42,5 +55,7 @@ export const {
   markAllAsRead,
   clearNotifications,
   removeNotification,
+  setSocketConnected,
+  setRealtimeVisible,
 } = notificationSlice.actions;
 export default notificationSlice.reducer;

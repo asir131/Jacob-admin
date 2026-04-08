@@ -33,6 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             '/customers': 'Customers',
             '/services': 'Services',
             '/gig-approvals': 'Gig Approvals',
+            '/provider-verifications': 'Provider Verifications',
             '/transactions': 'Transactions',
             '/nft-marketplace': 'NFT Marketplace',
             '/profile': 'Profile',
