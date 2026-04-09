@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google"; // Import DM Sans
 import "./globals.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
+import AdminAuthGate from "@/components/auth/AdminAuthGate";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -23,7 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${dmSans.variable} font-sans bg-light-bg text-brand-700 antialiased`}>
-        <ReduxProvider>{children}</ReduxProvider>
+        <ReduxProvider>
+          <AdminAuthGate>{children}</AdminAuthGate>
+        </ReduxProvider>
       </body>
     </html>
   );
