@@ -36,6 +36,14 @@ type WithdrawalState = {
   busyWithdrawalId: string;
   selectedWithdrawalId: string;
   reviewNoteDraft: string;
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
   notice: {
     type: 'success' | 'error';
     message: string;
@@ -48,6 +56,14 @@ const initialState: WithdrawalState = {
   busyWithdrawalId: '',
   selectedWithdrawalId: '',
   reviewNoteDraft: '',
+  pagination: {
+    page: 1,
+    limit: 8,
+    totalItems: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  },
   notice: null,
 };
 
@@ -55,6 +71,8 @@ type ApiArgs = {
   apiBase: string;
   adminToken: string;
   status?: string;
+  page?: number;
+  limit?: number;
 };
 
 type ReviewArgs = ApiArgs & {
@@ -64,22 +82,30 @@ type ReviewArgs = ApiArgs & {
 };
 
 export const fetchWithdrawalRequests = createAsyncThunk<
-  WithdrawalRequestItem[],
+  { items: WithdrawalRequestItem[]; pagination: WithdrawalState['pagination'] },
   ApiArgs,
   { rejectValue: string }
->('withdrawals/fetch', async ({ apiBase, adminToken, status = 'pending' }, thunkApi) => {
+>('withdrawals/fetch', async ({ apiBase, adminToken, status = 'review', page = 1, limit = 8 }, thunkApi) => {
   if (!apiBase) return thunkApi.rejectWithValue('Missing NEXT_PUBLIC_API_URL in admin dashboard environment.');
   try {
-    const response = await fetch(`${apiBase}/api/withdrawals/admin?status=${encodeURIComponent(status)}`, {
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-      },
-    });
+    const response = await fetch(
+      `${apiBase}/api/withdrawals/admin?status=${encodeURIComponent(status)}&page=${encodeURIComponent(
+        String(page)
+      )}&limit=${encodeURIComponent(String(limit))}`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      }
+    );
     const payload = await response.json();
     if (!response.ok || !payload?.success) {
       return thunkApi.rejectWithValue(payload?.message || 'Failed to load withdrawal requests.');
     }
-    return Array.isArray(payload.data) ? payload.data : [];
+    return {
+      items: Array.isArray(payload.data?.items) ? payload.data.items : [],
+      pagination: payload.data?.pagination || initialState.pagination,
+    };
   } catch {
     return thunkApi.rejectWithValue('Failed to load withdrawal requests.');
   }
@@ -132,9 +158,10 @@ const withdrawalRequestsSlice = createSlice({
       })
       .addCase(fetchWithdrawalRequests.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
-        if (!action.payload.some((item) => item.id === state.selectedWithdrawalId)) {
-          state.selectedWithdrawalId = action.payload[0]?.id || '';
+        state.items = action.payload.items;
+        state.pagination = action.payload.pagination;
+        if (!action.payload.items.some((item) => item.id === state.selectedWithdrawalId)) {
+          state.selectedWithdrawalId = action.payload.items[0]?.id || '';
         }
       })
       .addCase(fetchWithdrawalRequests.rejected, (state, action) => {
@@ -149,11 +176,11 @@ const withdrawalRequestsSlice = createSlice({
       })
       .addCase(reviewWithdrawalRequest.fulfilled, (state, action) => {
         state.busyWithdrawalId = '';
-        if (action.payload.action === 'paid') {
+        if (action.payload.action === 'approve') {
           state.items = state.items.map((item) =>
-            item.id === action.payload.withdrawalId ? { ...item, status: 'paid' } : item
+            item.id === action.payload.withdrawalId ? { ...item, status: 'approved' } : item
           );
-        } else {
+        } else if (action.payload.action === 'paid' || action.payload.action === 'reject') {
           state.items = state.items.filter((item) => item.id !== action.payload.withdrawalId);
           if (state.selectedWithdrawalId === action.payload.withdrawalId) {
             state.selectedWithdrawalId = state.items[0]?.id || '';
@@ -164,9 +191,9 @@ const withdrawalRequestsSlice = createSlice({
           type: 'success',
           message:
             action.payload.action === 'approve'
-              ? 'Withdrawal approved.'
+              ? 'Withdrawal accepted.'
               : action.payload.action === 'paid'
-                ? 'Withdrawal marked as paid.'
+                ? 'Withdrawal marked as done.'
                 : 'Withdrawal rejected.',
         };
       })

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -12,37 +12,54 @@ import {
 } from '@/store/slices/withdrawalRequestsSlice';
 import { MdCheckCircle, MdCancel, MdPerson, MdRefresh, MdPayments } from 'react-icons/md';
 
-const maskAccountNumber = (value: string) => {
-  const digits = String(value || '').replace(/\s+/g, '');
-  if (!digits) return 'N/A';
-  if (digits.length <= 4) return digits;
-  return `${'*'.repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}`;
-};
-
 export default function WithdrawalsPage() {
   const dispatch = useAppDispatch();
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
   const adminToken = useAppSelector((state) => state.auth.session?.accessToken || '');
   const notificationCount = useAppSelector((state) => state.adminNotifications.items.length);
-  const { items, loading, selectedWithdrawalId, busyWithdrawalId, reviewNoteDraft, notice } = useAppSelector(
+  const { items, loading, selectedWithdrawalId, busyWithdrawalId, reviewNoteDraft, notice, pagination } = useAppSelector(
     (state) => state.withdrawalRequests
   );
+  const [page, setPage] = useState(1);
+  const limit = 8;
 
   const selectedWithdrawal = useMemo(
     () => items.find((item) => item.id === selectedWithdrawalId) || items[0] || null,
     [items, selectedWithdrawalId]
   );
+  const isPendingWithdrawal = selectedWithdrawal?.status === 'pending';
+  const isApprovedWithdrawal = selectedWithdrawal?.status === 'approved';
+  const isPaidWithdrawal = selectedWithdrawal?.status === 'paid';
+  const isRejectedWithdrawal = selectedWithdrawal?.status === 'rejected';
 
   useEffect(() => {
     if (!adminToken) return;
-    void dispatch(fetchWithdrawalRequests({ apiBase, adminToken, status: 'pending' }));
-  }, [adminToken, apiBase, dispatch, notificationCount]);
+    void dispatch(fetchWithdrawalRequests({ apiBase, adminToken, status: 'review', page, limit }));
+  }, [adminToken, apiBase, dispatch, notificationCount, page]);
 
   useEffect(() => {
     if (!notice) return;
     const timeoutId = window.setTimeout(() => dispatch(clearWithdrawalNotice()), 3000);
     return () => window.clearTimeout(timeoutId);
   }, [dispatch, notice]);
+
+  const handleReview = async (action: 'approve' | 'reject' | 'paid') => {
+    if (!selectedWithdrawal) return;
+    try {
+      await dispatch(
+        reviewWithdrawalRequest({
+          apiBase,
+          adminToken,
+          withdrawalId: selectedWithdrawal.id,
+          action,
+          note: reviewNoteDraft,
+        })
+      ).unwrap();
+      await dispatch(fetchWithdrawalRequests({ apiBase, adminToken, status: 'review', page, limit }));
+    } catch {
+      // state slice already surfaces the error
+    }
+  };
 
   return (
     <AdminLayout>
@@ -68,7 +85,7 @@ export default function WithdrawalsPage() {
 
             <button
               type="button"
-              onClick={() => void dispatch(fetchWithdrawalRequests({ apiBase, adminToken, status: 'pending' }))}
+              onClick={() => void dispatch(fetchWithdrawalRequests({ apiBase, adminToken, status: 'review', page, limit }))}
               className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#2286BE]/20 bg-[#2286BE]/5 px-4 text-sm font-semibold text-[#2286BE] transition hover:bg-[#2286BE]/10"
             >
               <MdRefresh className="h-4 w-4" />
@@ -86,7 +103,7 @@ export default function WithdrawalsPage() {
             No pending withdrawal requests right now.
           </div>
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)] pb-28">
             <div className="space-y-4">
               {items.map((item) => {
                 const isActive = selectedWithdrawal?.id === item.id;
@@ -120,6 +137,9 @@ export default function WithdrawalsPage() {
                       <span>Requested: {item.requestedAt ? new Date(item.requestedAt).toLocaleString() : 'N/A'}</span>
                       <span className="font-bold text-[#2286BE]">${Number(item.amount || 0).toFixed(2)}</span>
                     </div>
+                    <div className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      {item.status === 'approved' ? 'Pending payout' : item.status}
+                    </div>
                   </button>
                 );
               })}
@@ -137,7 +157,7 @@ export default function WithdrawalsPage() {
                   <div className="rounded-2xl bg-lightPrimary p-4 dark:bg-navy-700">
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2286BE]">Bank Account Number</p>
                     <p className="mt-2 text-sm font-bold text-navy-700 dark:text-white">
-                      {maskAccountNumber(selectedWithdrawal.payoutInfo.bankAccountNumber)}
+                      {selectedWithdrawal.payoutInfo.bankAccountNumber || 'N/A'}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-lightPrimary p-4 dark:bg-navy-700">
@@ -199,71 +219,48 @@ export default function WithdrawalsPage() {
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void dispatch(
-                        reviewWithdrawalRequest({
-                          apiBase,
-                          adminToken,
-                          withdrawalId: selectedWithdrawal.id,
-                          action: 'approve',
-                          note: reviewNoteDraft,
-                        })
-                      )
-                    }
-                    disabled={busyWithdrawalId === selectedWithdrawal.id}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#2286BE] px-5 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <MdCheckCircle className="h-4 w-4" />
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void dispatch(
-                        reviewWithdrawalRequest({
-                          apiBase,
-                          adminToken,
-                          withdrawalId: selectedWithdrawal.id,
-                          action: 'reject',
-                          note: reviewNoteDraft,
-                        })
-                      )
-                    }
-                    disabled={busyWithdrawalId === selectedWithdrawal.id}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-red-200 px-5 text-sm font-bold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-500/10"
-                  >
-                    <MdCancel className="h-4 w-4" />
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void dispatch(
-                        reviewWithdrawalRequest({
-                          apiBase,
-                          adminToken,
-                          withdrawalId: selectedWithdrawal.id,
-                          action: 'paid',
-                          note: reviewNoteDraft,
-                        })
-                      )
-                    }
-                    disabled={busyWithdrawalId === selectedWithdrawal.id}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-emerald-200 px-5 text-sm font-bold text-emerald-600 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-emerald-500/10"
-                  >
-                    <MdPayments className="h-4 w-4" />
-                    Mark Paid
-                  </button>
+                  {isPendingWithdrawal ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void handleReview('approve')}
+                        disabled={busyWithdrawalId === selectedWithdrawal.id}
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#2286BE] px-5 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <MdCheckCircle className="h-4 w-4" />
+                        Accept Withdrawal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleReview('reject')}
+                        disabled={busyWithdrawalId === selectedWithdrawal.id}
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-red-200 px-5 text-sm font-bold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-500/10"
+                      >
+                        <MdCancel className="h-4 w-4" />
+                        Reject
+                      </button>
+                    </>
+                  ) : null}
+                  {isApprovedWithdrawal ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleReview('paid')}
+                      disabled={busyWithdrawalId === selectedWithdrawal.id}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-emerald-200 px-5 text-sm font-bold text-emerald-600 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-emerald-500/10"
+                    >
+                      <MdPayments className="h-4 w-4" />
+                      Done
+                    </button>
+                  ) : null}
+                  {isPaidWithdrawal || isRejectedWithdrawal ? null : null}
                 </div>
 
                 <div className="rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500 dark:bg-navy-700 dark:text-slate-200">
-                  {selectedWithdrawal.status === 'pending'
+                  {isPendingWithdrawal
                     ? 'Pending requests can be approved or rejected.'
-                    : selectedWithdrawal.status === 'approved'
-                      ? 'Approved requests can now be marked paid after the transfer is processed.'
-                      : selectedWithdrawal.status === 'paid'
+                    : isApprovedWithdrawal
+                      ? 'This withdrawal is approved and ready to be marked as done after the bank transfer is processed.'
+                      : isPaidWithdrawal
                         ? 'This withdrawal has already been paid.'
                         : 'This withdrawal request was rejected.'}
                 </div>
@@ -271,6 +268,30 @@ export default function WithdrawalsPage() {
             ) : null}
           </div>
         )}
+
+        <div className="fixed bottom-8 left-1/2 z-40 -translate-x-1/2">
+          <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur">
+            <button
+              type="button"
+              disabled={!pagination.hasPrevPage}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <div className="rounded-xl bg-white px-4 py-2 text-sm font-black text-slate-700 border border-slate-200">
+              {pagination.page}/{pagination.totalPages}
+            </div>
+            <button
+              type="button"
+              disabled={!pagination.hasNextPage}
+              onClick={() => setPage((prev) => prev + 1)}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </AdminLayout>
   );

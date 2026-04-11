@@ -104,27 +104,51 @@ export default function AdminRealtimeNotifications() {
         notificationType === 'gig_approval_request' ||
         String(event.title || '').toLowerCase().includes('custom category');
       const isProviderVerification = notificationType === 'provider_verification_request';
+      const isWithdrawalRequest =
+        notificationType === 'withdrawal_request_created' ||
+        notificationType === 'withdrawal_request_approved' ||
+        notificationType === 'withdrawal_request_rejected' ||
+        notificationType === 'withdrawal_paid';
 
-      if (!isGigApproval && !isProviderVerification) return;
+      if (!isGigApproval && !isProviderVerification && !isWithdrawalRequest) return;
+
+      const withdrawalTitleMap: Record<string, string> = {
+        withdrawal_request_created: 'New withdrawal request',
+        withdrawal_request_approved: 'Withdrawal request approved',
+        withdrawal_request_rejected: 'Withdrawal request rejected',
+        withdrawal_paid: 'Withdrawal marked paid',
+      };
 
       const notification: ApprovalNotification = {
         id: event.id || `notification-${Date.now()}`,
         title:
           event.title ||
-          (isProviderVerification ? 'Provider verification requested' : 'New custom category request'),
+          (isWithdrawalRequest
+            ? withdrawalTitleMap[notificationType] || 'Withdrawal update'
+            : isProviderVerification
+              ? 'Provider verification requested'
+              : 'New custom category request'),
         description:
           event.description ||
-          (isProviderVerification
-            ? 'A provider submitted payout + NID verification request.'
-            : 'A provider submitted a custom category for approval.'),
+          (isWithdrawalRequest
+            ? 'A provider withdrawal request needs your attention.'
+            : isProviderVerification
+              ? 'A provider submitted payout + NID verification request.'
+              : 'A provider submitted a custom category for approval.'),
         categoryName:
           event.data?.customCategoryName ||
           event.data?.categoryName ||
-          (isProviderVerification ? 'Provider verification' : 'Custom category'),
+          (isWithdrawalRequest ? 'Withdrawal' : isProviderVerification ? 'Provider verification' : 'Custom category'),
         providerName: event.data?.providerName || 'System',
-        notificationType: isProviderVerification ? 'provider_verification_request' : 'gig_approval_request',
+        notificationType: isWithdrawalRequest
+          ? notificationType
+          : isProviderVerification
+            ? 'provider_verification_request'
+            : 'gig_approval_request',
         providerId: event.data?.providerId,
-        targetPath: event.data?.targetPath || (isProviderVerification ? '/provider-verifications' : '/gig-approvals'),
+        targetPath:
+          event.data?.targetPath ||
+          (isWithdrawalRequest ? '/withdrawals' : isProviderVerification ? '/provider-verifications' : '/gig-approvals'),
         createdAt: event.createdAt || new Date().toISOString(),
       };
 
