@@ -1,0 +1,186 @@
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+
+export type WithdrawalRequestItem = {
+  id: string;
+  providerId: string;
+  providerName: string;
+  providerEmail: string;
+  providerAvatar: string;
+  providerWalletBalance: number;
+  providerTotalEarnings: number;
+  providerTotalWithdrawn: number;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
+  note: string;
+  requestedAt: string | null;
+  reviewedAt: string | null;
+  processedAt: string | null;
+  payoutVerificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected';
+  payoutInfo: {
+    accountHolderName: string;
+    bankAccountNumber: string;
+    routingNumber: string;
+    bankName: string;
+    accountType: 'checking' | 'savings' | '';
+    nidFrontImageUrl: string;
+    nidBackImageUrl: string;
+    submittedAt: string | null;
+    reviewedAt: string | null;
+    rejectionReason: string;
+  };
+};
+
+type WithdrawalState = {
+  items: WithdrawalRequestItem[];
+  loading: boolean;
+  busyWithdrawalId: string;
+  selectedWithdrawalId: string;
+  reviewNoteDraft: string;
+  notice: {
+    type: 'success' | 'error';
+    message: string;
+  } | null;
+};
+
+const initialState: WithdrawalState = {
+  items: [],
+  loading: false,
+  busyWithdrawalId: '',
+  selectedWithdrawalId: '',
+  reviewNoteDraft: '',
+  notice: null,
+};
+
+type ApiArgs = {
+  apiBase: string;
+  adminToken: string;
+  status?: string;
+};
+
+type ReviewArgs = ApiArgs & {
+  withdrawalId: string;
+  action: 'approve' | 'reject' | 'paid';
+  note?: string;
+};
+
+export const fetchWithdrawalRequests = createAsyncThunk<
+  WithdrawalRequestItem[],
+  ApiArgs,
+  { rejectValue: string }
+>('withdrawals/fetch', async ({ apiBase, adminToken, status = 'pending' }, thunkApi) => {
+  if (!apiBase) return thunkApi.rejectWithValue('Missing NEXT_PUBLIC_API_URL in admin dashboard environment.');
+  try {
+    const response = await fetch(`${apiBase}/api/withdrawals/admin?status=${encodeURIComponent(status)}`, {
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+      },
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload?.success) {
+      return thunkApi.rejectWithValue(payload?.message || 'Failed to load withdrawal requests.');
+    }
+    return Array.isArray(payload.data) ? payload.data : [];
+  } catch {
+    return thunkApi.rejectWithValue('Failed to load withdrawal requests.');
+  }
+});
+
+export const reviewWithdrawalRequest = createAsyncThunk<
+  { withdrawalId: string; action: 'approve' | 'reject' | 'paid' },
+  ReviewArgs,
+  { rejectValue: string }
+>('withdrawals/review', async ({ apiBase, adminToken, withdrawalId, action, note = '' }, thunkApi) => {
+  if (!apiBase) return thunkApi.rejectWithValue('Missing NEXT_PUBLIC_API_URL in admin dashboard environment.');
+  try {
+    const response = await fetch(`${apiBase}/api/withdrawals/admin/${withdrawalId}/review`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ action, note }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload?.success) {
+      return thunkApi.rejectWithValue(payload?.message || 'Failed to review withdrawal request.');
+    }
+    return { withdrawalId, action };
+  } catch {
+    return thunkApi.rejectWithValue('Failed to review withdrawal request.');
+  }
+});
+
+const withdrawalRequestsSlice = createSlice({
+  name: 'withdrawalRequests',
+  initialState,
+  reducers: {
+    setSelectedWithdrawalId: (state, action: PayloadAction<string>) => {
+      state.selectedWithdrawalId = action.payload;
+      state.reviewNoteDraft = '';
+    },
+    setReviewNoteDraft: (state, action: PayloadAction<string>) => {
+      state.reviewNoteDraft = action.payload;
+    },
+    clearWithdrawalNotice: (state) => {
+      state.notice = null;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchWithdrawalRequests.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchWithdrawalRequests.fulfilled, (state, action) => {
+        state.loading = false;
+        state.items = action.payload;
+        if (!action.payload.some((item) => item.id === state.selectedWithdrawalId)) {
+          state.selectedWithdrawalId = action.payload[0]?.id || '';
+        }
+      })
+      .addCase(fetchWithdrawalRequests.rejected, (state, action) => {
+        state.loading = false;
+        state.notice = {
+          type: 'error',
+          message: action.payload || 'Failed to load withdrawal requests.',
+        };
+      })
+      .addCase(reviewWithdrawalRequest.pending, (state, action) => {
+        state.busyWithdrawalId = action.meta.arg.withdrawalId;
+      })
+      .addCase(reviewWithdrawalRequest.fulfilled, (state, action) => {
+        state.busyWithdrawalId = '';
+        if (action.payload.action === 'paid') {
+          state.items = state.items.map((item) =>
+            item.id === action.payload.withdrawalId ? { ...item, status: 'paid' } : item
+          );
+        } else {
+          state.items = state.items.filter((item) => item.id !== action.payload.withdrawalId);
+          if (state.selectedWithdrawalId === action.payload.withdrawalId) {
+            state.selectedWithdrawalId = state.items[0]?.id || '';
+          }
+        }
+        state.reviewNoteDraft = '';
+        state.notice = {
+          type: 'success',
+          message:
+            action.payload.action === 'approve'
+              ? 'Withdrawal approved.'
+              : action.payload.action === 'paid'
+                ? 'Withdrawal marked as paid.'
+                : 'Withdrawal rejected.',
+        };
+      })
+      .addCase(reviewWithdrawalRequest.rejected, (state, action) => {
+        state.busyWithdrawalId = '';
+        state.notice = {
+          type: 'error',
+          message: action.payload || 'Failed to review withdrawal request.',
+        };
+      });
+  },
+});
+
+export const { setSelectedWithdrawalId, setReviewNoteDraft, clearWithdrawalNotice } =
+  withdrawalRequestsSlice.actions;
+
+export default withdrawalRequestsSlice.reducer;

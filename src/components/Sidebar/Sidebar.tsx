@@ -14,6 +14,7 @@ const routes = [
     { name: 'Services', layout: '/admin', path: 'services', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Gig Approvals', layout: '/admin', path: 'gig-approvals', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Provider Verification', layout: '/admin', path: 'provider-verifications', icon: <IoDocuments className="w-6 h-6" /> },
+    { name: 'Withdrawals', layout: '/admin', path: 'withdrawals', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Transactions', layout: '/admin', path: 'transactions', icon: <MdBarChart className="w-6 h-6" /> },
     { name: 'NFT Marketplace', layout: '/admin', path: 'nft-marketplace', icon: <MdOutlineShoppingCart className="w-6 h-6" /> },
     { name: 'Profile', layout: '/admin', path: 'profile', icon: <MdPerson className="h-6 w-6" /> },

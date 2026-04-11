@@ -7,6 +7,7 @@ import tableStateReducer from './slices/tableStateSlice';
 import signInReducer from './slices/signInSlice';
 import gigApprovalsReducer from './slices/gigApprovalsSlice';
 import providerVerificationReducer from './slices/providerVerificationSlice';
+import withdrawalRequestsReducer from './slices/withdrawalRequestsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     signIn: signInReducer,
     gigApprovals: gigApprovalsReducer,
     providerVerification: providerVerificationReducer,
+    withdrawalRequests: withdrawalRequestsReducer,
   },
 });
 
