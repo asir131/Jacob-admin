@@ -8,6 +8,7 @@ import signInReducer from './slices/signInSlice';
 import gigApprovalsReducer from './slices/gigApprovalsSlice';
 import providerVerificationReducer from './slices/providerVerificationSlice';
 import withdrawalRequestsReducer from './slices/withdrawalRequestsSlice';
+import faqReducer from './slices/faqSlice';
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
     gigApprovals: gigApprovalsReducer,
     providerVerification: providerVerificationReducer,
     withdrawalRequests: withdrawalRequestsReducer,
+    faqs: faqReducer,
   },
 });
 
