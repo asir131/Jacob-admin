@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { MdHome, MdOutlineShoppingCart, MdBarChart, MdPerson, MdClose, MdGroup } from 'react-icons/md';
+import { MdHome, MdOutlineShoppingCart, MdBarChart, MdPerson, MdClose, MdGroup, MdCategory } from 'react-icons/md';
 import { IoDocuments } from "react-icons/io5";
 
 const routes = [
@@ -12,6 +12,8 @@ const routes = [
     { name: 'Providers', layout: '/admin', path: 'providers', icon: <MdPerson className="w-6 h-6" /> },
     { name: 'Customers', layout: '/admin', path: 'customers', icon: <MdGroup className="w-6 h-6" /> },
     { name: 'Services', layout: '/admin', path: 'services', icon: <IoDocuments className="w-6 h-6" /> },
+    { name: 'Categories', layout: '/admin', path: 'categories', icon: <MdCategory className="w-6 h-6" /> },
+    { name: 'Support', layout: '/admin', path: 'support', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Gig Approvals', layout: '/admin', path: 'gig-approvals', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Provider Verification', layout: '/admin', path: 'provider-verifications', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Withdrawals', layout: '/admin', path: 'withdrawals', icon: <IoDocuments className="w-6 h-6" /> },
