@@ -14,6 +14,7 @@ const routes = [
     { name: 'Services', layout: '/admin', path: 'services', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Categories', layout: '/admin', path: 'categories', icon: <MdCategory className="w-6 h-6" /> },
     { name: 'Support', layout: '/admin', path: 'support', icon: <IoDocuments className="w-6 h-6" /> },
+    { name: 'Service Requests', layout: '/admin', path: 'service-requests', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Gig Approvals', layout: '/admin', path: 'gig-approvals', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Provider Verification', layout: '/admin', path: 'provider-verifications', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Withdrawals', layout: '/admin', path: 'withdrawals', icon: <IoDocuments className="w-6 h-6" /> },

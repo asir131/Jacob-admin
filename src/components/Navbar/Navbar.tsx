@@ -157,10 +157,10 @@ const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
                             <div className="border-t border-slate-100 px-4 py-3 dark:border-white/10">
                                 <button
                                     type="button"
-                                    onClick={() => openNotificationTarget('/gig-approvals')}
+                                    onClick={() => openNotificationTarget(notifications[0]?.targetPath || '/gig-approvals')}
                                     className="w-full rounded-2xl bg-[#2286BE] px-4 py-3 text-sm font-bold text-white transition hover:opacity-90"
                                 >
-                                    Open Approvals
+                                    Open Inbox
                                 </button>
                             </div>
                         </div>

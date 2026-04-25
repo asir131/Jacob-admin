@@ -34,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             '/services': 'Services',
             '/categories': 'Categories',
             '/support': 'Support',
+            '/service-requests': 'Service Requests',
             '/gig-approvals': 'Gig Approvals',
             '/provider-verifications': 'Provider Verifications',
             '/withdrawals': 'Withdrawals',

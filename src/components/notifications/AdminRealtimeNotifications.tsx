@@ -105,13 +105,16 @@ export default function AdminRealtimeNotifications() {
         String(event.title || '').toLowerCase().includes('custom category');
       const isProviderVerification = notificationType === 'provider_verification_request';
       const isSupportMessage = notificationType === 'support_message';
+      const isServiceRequest =
+        notificationType === 'service_request_created' ||
+        notificationType === 'custom_category_request_created';
       const isWithdrawalRequest =
         notificationType === 'withdrawal_request_created' ||
         notificationType === 'withdrawal_request_approved' ||
         notificationType === 'withdrawal_request_rejected' ||
         notificationType === 'withdrawal_paid';
 
-      if (!isGigApproval && !isProviderVerification && !isWithdrawalRequest && !isSupportMessage) return;
+      if (!isGigApproval && !isProviderVerification && !isWithdrawalRequest && !isSupportMessage && !isServiceRequest) return;
 
       const withdrawalTitleMap: Record<string, string> = {
         withdrawal_request_created: 'New withdrawal request',
@@ -130,32 +133,50 @@ export default function AdminRealtimeNotifications() {
               ? 'New support message'
             : isProviderVerification
               ? 'Provider verification requested'
-              : 'New custom category request'),
+              : notificationType === 'custom_category_request_created'
+                ? 'New custom category request'
+                : 'New service request'),
         description:
           event.description ||
           (isWithdrawalRequest
             ? 'A provider withdrawal request needs your attention.'
             : isSupportMessage
               ? 'A user sent a new support message from the contact page.'
+            : notificationType === 'custom_category_request_created'
+              ? 'A client requested a new category for a custom service request.'
+            : isServiceRequest
+              ? 'A client submitted a new service request.'
             : isProviderVerification
               ? 'A provider submitted payout + NID verification request.'
               : 'A provider submitted a custom category for approval.'),
         categoryName:
           event.data?.customCategoryName ||
           event.data?.categoryName ||
-          (isWithdrawalRequest ? 'Withdrawal' : isSupportMessage ? 'Support' : isProviderVerification ? 'Provider verification' : 'Custom category'),
+          (isWithdrawalRequest
+            ? 'Withdrawal'
+            : isSupportMessage
+              ? 'Support'
+            : notificationType === 'custom_category_request_created'
+              ? 'Custom category'
+            : isServiceRequest
+              ? 'Service request'
+            : isProviderVerification
+              ? 'Provider verification'
+              : 'Custom category'),
         providerName: event.data?.providerName || 'System',
         notificationType: isWithdrawalRequest
           ? notificationType
           : isSupportMessage
             ? 'support_message'
-          : isProviderVerification
+          : isServiceRequest
+            ? notificationType || 'service_request_created'
+            : isProviderVerification
             ? 'provider_verification_request'
             : 'gig_approval_request',
         providerId: event.data?.providerId,
         targetPath:
           event.data?.targetPath ||
-          (isWithdrawalRequest ? '/withdrawals' : isSupportMessage ? '/support' : isProviderVerification ? '/provider-verifications' : '/gig-approvals'),
+          (isWithdrawalRequest ? '/withdrawals' : isSupportMessage ? '/support' : isServiceRequest ? '/service-requests' : isProviderVerification ? '/provider-verifications' : '/gig-approvals'),
         createdAt: event.createdAt || new Date().toISOString(),
       };
 
