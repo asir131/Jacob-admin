@@ -1,39 +1,69 @@
 'use client';
-import ProviderTable from '@/components/admin/ProviderTable';
+
+import { useEffect, useState } from 'react';
+import ProviderTable, { type ProviderRow } from '@/components/admin/ProviderTable';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import { getStoredAdminToken } from '@/lib/auth';
 
-const categories = ['Plumbing', 'Electrical', 'Cleaning', 'Gardening', 'Carpentry', 'Painting'];
-const statuses = ['Approved', 'Pending', 'Disable'];
-const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-const tableDataProviders = Array.from({ length: 50 }, (_, i) => {
-    const date = new Date(2024, Math.floor(i / 5), (i % 28) + 1);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = monthNames[date.getMonth()];
-    const year = date.getFullYear();
-
-    // Deterministic rating based on index
-    const rating = Number((3.5 + (i * 0.13) % 1.5).toFixed(1));
-
-    return {
-        id: (i + 1).toString(),
-        name: `Service Provider ${i + 1}`,
-        category: categories[i % categories.length],
-        status: statuses[i % statuses.length],
-        rating: rating,
-        date: `${day} ${month} ${year}`,
-        timestamp: date.getTime(),
-    };
-});
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 const Providers = () => {
-    return (
-        <AdminLayout>
-            <div className="flex w-full flex-col gap-5 mt-5">
-                <ProviderTable tableData={tableDataProviders} />
-            </div>
-        </AdminLayout>
-    );
+  const [rows, setRows] = useState<ProviderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadProviders = async () => {
+      const adminToken = getStoredAdminToken();
+      if (!API_BASE || !adminToken) {
+        setError('Missing admin session or API base URL.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+        const response = await fetch(`${API_BASE}/api/profile/admin/providers`, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            Accept: 'application/json',
+          },
+        });
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.success) {
+          throw new Error(payload?.message || 'Failed to load providers.');
+        }
+
+        setRows(Array.isArray(payload.data) ? payload.data : []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load providers.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadProviders();
+  }, []);
+
+  return (
+    <AdminLayout>
+      <div className="mt-5 flex w-full flex-col gap-5">
+        {loading ? (
+          <div className="rounded-3xl border border-gray-100 bg-white p-8 text-sm font-bold text-gray-500 shadow-sm">
+            Loading providers...
+          </div>
+        ) : error ? (
+          <div className="rounded-3xl border border-red-100 bg-red-50 p-8 text-sm font-bold text-red-600">
+            {error}
+          </div>
+        ) : (
+          <ProviderTable tableData={rows} />
+        )}
+      </div>
+    </AdminLayout>
+  );
 };
 
 export default Providers;

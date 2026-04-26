@@ -75,6 +75,15 @@ export default function ServiceRequestsPage() {
   const [actioningId, setActioningId] = React.useState('');
   const [notice, setNotice] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const copyToClipboard = React.useCallback(async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(String(value || ''));
+      setNotice({ type: 'success', message: `${label} copied.` });
+    } catch {
+      setNotice({ type: 'error', message: `Could not copy ${label.toLowerCase()}.` });
+    }
+  }, []);
+
   const loadRequests = React.useCallback(async () => {
     if (!apiBase || !adminToken) return;
 
@@ -252,6 +261,20 @@ export default function ServiceRequestsPage() {
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
                             {item.requestNumber}
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => void copyToClipboard(item.requestNumber, 'Request number')}
+                            className="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 transition hover:bg-slate-50"
+                          >
+                            Copy Number
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void copyToClipboard(item.id, 'Request ID')}
+                            className="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 transition hover:bg-slate-50"
+                          >
+                            Copy ID
+                          </button>
                           <span className="rounded-full bg-[#2286BE]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#2286BE]">
                             {item.requestType === 'custom' ? 'Custom request' : 'Matched category'}
                           </span>
