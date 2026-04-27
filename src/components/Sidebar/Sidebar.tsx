@@ -11,7 +11,6 @@ const routes = [
     { name: 'Dashboard', layout: '/admin', path: 'default', icon: <MdHome className="w-6 h-6" /> },
     { name: 'Providers', layout: '/admin', path: 'providers', icon: <MdPerson className="w-6 h-6" /> },
     { name: 'Customers', layout: '/admin', path: 'customers', icon: <MdGroup className="w-6 h-6" /> },
-    { name: 'Services', layout: '/admin', path: 'services', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Categories', layout: '/admin', path: 'categories', icon: <MdCategory className="w-6 h-6" /> },
     { name: 'Support', layout: '/admin', path: 'support', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Service Requests', layout: '/admin', path: 'service-requests', icon: <IoDocuments className="w-6 h-6" /> },
@@ -70,7 +69,7 @@ const Sidebar = ({ open, onClose, onLogout }: SidebarProps) => {
                 <div className="mt-[50px] mb-7 h-px bg-gray-200 dark:bg-white/30 mx-[52px]" />
 
                 {/* Nav Links */}
-                <ul className="mb-auto pt-1">
+                <ul className="pt-1">
                     {routes.map((route, key) => (
                         <li key={key} className="relative mb-3 px-8">
                             <Link
@@ -101,7 +100,7 @@ const Sidebar = ({ open, onClose, onLogout }: SidebarProps) => {
                     <button
                         type="button"
                         onClick={onLogout}
-                        className="mt-14 w-full max-w-[228px] rounded-[20px] bg-[#2286BE] px-6 py-4 text-left shadow-lg shadow-[#2286BE]/20 transition hover:opacity-90"
+                        className="mt-0 w-full max-w-[228px] rounded-[20px] bg-[#2286BE] px-6 py-4 text-left shadow-lg shadow-[#2286BE]/20 transition hover:opacity-90"
                     >
                         <div className="text-sm font-bold text-white">Logout</div>
                         <div className="mt-1 text-[10px] font-medium text-white/80">
