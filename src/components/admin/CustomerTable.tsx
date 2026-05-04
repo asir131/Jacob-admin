@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Card from '@/components/Card/Card';
 import { MdCheckCircle, MdCancel, MdDownload, MdChevronLeft, MdChevronRight, MdClose } from 'react-icons/md';
 import { downloadCSV } from '@/utils/exportUtils';
@@ -489,10 +490,10 @@ const CustomerTable = ({ tableData }: { tableData: CustomerRow[] }) => {
         </div>
       )}
 
-      {(detailLoading || detailError || selectedCustomer) && (
-        <div className="fixed inset-0 z-[200] flex items-start justify-center bg-navy-900/60 px-4 pb-4 pt-24 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-navy-800">
-            <div className="sticky top-0 z-[210] flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 dark:border-white/10 dark:bg-navy-800">
+      {(detailLoading || detailError || selectedCustomer) && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-navy-900/60 p-4 backdrop-blur-sm md:p-6">
+          <div className="mt-10 flex max-h-[calc(100vh-4.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl md:max-h-[78vh] dark:bg-navy-800">
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-white px-6 py-4 dark:border-white/10 dark:bg-navy-800">
               <div>
                 <h3 className="text-xl font-bold text-navy-700 dark:text-white">Customer Details</h3>
                 <p className="text-sm text-gray-500">Full customer information and order history.</p>
@@ -509,12 +510,13 @@ const CustomerTable = ({ tableData }: { tableData: CustomerRow[] }) => {
               </button>
             </div>
 
-            {detailLoading ? (
-              <div className="p-10 text-sm font-bold text-gray-500">Loading customer details...</div>
-            ) : detailError ? (
-              <div className="p-10 text-sm font-bold text-red-600">{detailError}</div>
-            ) : selectedCustomer ? (
-              <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-12">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {detailLoading ? (
+                <div className="p-10 text-sm font-bold text-gray-500">Loading customer details...</div>
+              ) : detailError ? (
+                <div className="p-10 text-sm font-bold text-red-600">{detailError}</div>
+              ) : selectedCustomer ? (
+                <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-12">
                 <div className="lg:col-span-4">
                   <div className="rounded-3xl border border-gray-100 p-6 shadow-sm dark:border-white/10">
                     <div className="flex flex-col items-center text-center">
@@ -632,10 +634,12 @@ const CustomerTable = ({ tableData }: { tableData: CustomerRow[] }) => {
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </Card>
   );
