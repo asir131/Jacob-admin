@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { MdHome, MdOutlineShoppingCart, MdBarChart, MdPerson, MdClose, MdGroup, MdCategory } from 'react-icons/md';
 import { IoDocuments } from "react-icons/io5";
+import { useAppSelector } from '@/store/hooks';
 
 const routes = [
     { name: 'Dashboard', layout: '/admin', path: 'default', icon: <MdHome className="w-6 h-6" /> },
@@ -31,10 +32,12 @@ interface SidebarProps {
 
 const Sidebar = ({ open, onClose, onLogout }: SidebarProps) => {
     const pathname = usePathname();
+    const role = useAppSelector((state) => state.auth.session?.user.role);
+    const visibleRoutes = routes.filter((route) => route.path !== 'withdrawals' || role === 'superAdmin');
 
     // Determine active route based on current pathname
     const getActiveRoute = (pathname: string) => {
-        const route = routes.find(route => {
+        const route = visibleRoutes.find(route => {
             const routePath = route.path === 'default' ? '/' : `/${route.path}`;
             return pathname === routePath;
         });
@@ -70,7 +73,7 @@ const Sidebar = ({ open, onClose, onLogout }: SidebarProps) => {
 
                 {/* Nav Links */}
                 <ul className="pt-1">
-                    {routes.map((route, key) => (
+                    {visibleRoutes.map((route, key) => (
                         <li key={key} className="relative mb-3 px-8">
                             <Link
                                 href={route.path === 'default' ? '/' : `/${route.path}`}

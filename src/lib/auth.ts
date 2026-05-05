@@ -11,6 +11,7 @@ export type AdminSession = {
     lastName: string;
     email: string;
     role: string;
+    avatar?: string;
   };
 };
 

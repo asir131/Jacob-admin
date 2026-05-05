@@ -13,6 +13,7 @@ type LoginResponse = {
       lastName: string;
       email: string;
       role: string;
+      avatar?: string;
     };
   };
 };
@@ -60,8 +61,8 @@ export const submitAdminLogin = createAsyncThunk<
       return thunkApi.rejectWithValue(payload.message || 'Invalid admin email or password.');
     }
 
-    if (payload.data.user.role !== 'superAdmin') {
-      return thunkApi.rejectWithValue('Only super admin can access the admin dashboard.');
+    if (!['admin', 'superAdmin'].includes(payload.data.user.role)) {
+      return thunkApi.rejectWithValue('Only admin accounts can access the admin dashboard.');
     }
 
     const session: AdminSession = {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { MdNotificationsNone, MdInfoOutline, MdMenu, MdChevronRight } from 'react-icons/md';
+import { MdNotificationsNone, MdMenu, MdChevronRight } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import SearchInput from '../ui/SearchInput';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -15,7 +15,18 @@ const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
     const dropdownRef = useRef<HTMLDivElement | null>(null);
     const isNotificationOpen = useAppSelector((state) => state.adminUi.notificationDropdownOpen);
     const notifications = useAppSelector((state) => state.adminNotifications.items);
+    const sessionUser = useAppSelector((state) => state.auth.session?.user);
     const unreadCount = useMemo(() => notifications.filter((item) => item.unread).length, [notifications]);
+    const initials = useMemo(() => {
+        const name = `${sessionUser?.firstName || ''} ${sessionUser?.lastName || ''}`.trim() || sessionUser?.email || 'A';
+        return name
+            .split(' ')
+            .filter(Boolean)
+            .map((part) => part[0])
+            .slice(0, 2)
+            .join('')
+            .toUpperCase();
+    }, [sessionUser]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -166,11 +177,18 @@ const Navbar = (props: { brandText: string, onOpenSidebar: () => void }) => {
                         </div>
                     ) : null}
                 </div>
-                <div className="flex h-full items-center justify-center rounded-lg px-px">
-                    <MdInfoOutline className="h-[18px] w-[18px] text-[#A3AED0]" />
-                </div>
                 <div className="flex h-full items-center justify-center rounded-lg px-1">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-b from-[#4481EB] to-[#04BEFE]" />
+                    {sessionUser?.avatar ? (
+                        <img
+                            src={sessionUser.avatar}
+                            alt={sessionUser.email || 'Admin'}
+                            className="h-10 w-10 rounded-full object-cover ring-2 ring-white"
+                        />
+                    ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-b from-[#4481EB] to-[#04BEFE] text-xs font-bold text-white">
+                            {initials}
+                        </div>
+                    )}
                 </div>
             </div>
         </nav>

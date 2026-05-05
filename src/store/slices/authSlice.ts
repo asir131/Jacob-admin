@@ -28,8 +28,15 @@ const authSlice = createSlice({
         hydrated: true,
       };
     },
+    updateSessionUser: (state, action: PayloadAction<Partial<AdminSession['user']>>) => {
+      if (!state.session) return;
+      state.session.user = {
+        ...state.session.user,
+        ...action.payload,
+      };
+    },
   },
 });
 
-export const { setSession, clearSession } = authSlice.actions;
+export const { setSession, clearSession, updateSessionUser } = authSlice.actions;
 export default authSlice.reducer;
