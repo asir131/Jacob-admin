@@ -39,7 +39,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             '/provider-verifications': 'Provider Verifications',
             '/withdrawals': 'Withdrawals',
             '/transactions': 'Transactions',
-            '/nft-marketplace': 'NFT Marketplace',
             '/profile': 'Profile',
             '/auth/sign-in': 'Sign In',
         };

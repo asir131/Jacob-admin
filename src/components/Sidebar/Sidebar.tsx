@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { MdHome, MdOutlineShoppingCart, MdBarChart, MdPerson, MdClose, MdGroup, MdCategory } from 'react-icons/md';
+import { MdHome, MdBarChart, MdPerson, MdClose, MdGroup, MdCategory } from 'react-icons/md';
 import { IoDocuments } from "react-icons/io5";
 import { useAppSelector } from '@/store/hooks';
 
@@ -20,7 +20,6 @@ const routes = [
     { name: 'Withdrawals', layout: '/admin', path: 'withdrawals', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'FAQs', layout: '/admin', path: 'faqs', icon: <IoDocuments className="w-6 h-6" /> },
     { name: 'Transactions', layout: '/admin', path: 'transactions', icon: <MdBarChart className="w-6 h-6" /> },
-    { name: 'NFT Marketplace', layout: '/admin', path: 'nft-marketplace', icon: <MdOutlineShoppingCart className="w-6 h-6" /> },
     { name: 'Profile', layout: '/admin', path: 'profile', icon: <MdPerson className="h-6 w-6" /> },
 ];
 
