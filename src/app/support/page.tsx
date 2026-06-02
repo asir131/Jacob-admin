@@ -3,30 +3,20 @@
 import React from 'react';
 import { io, type Socket } from 'socket.io-client';
 import AdminLayout from '@/components/layouts/AdminLayout';
-import { useAppSelector } from '@/store/hooks';
-
-type SupportUser = {
-  id: string;
-  firstName?: string;
-  lastName?: string;
-  name?: string;
-  email?: string;
-  avatar?: string;
-  role?: string;
-};
-
-type SupportMessage = {
-  id: string;
-  fullName: string;
-  email: string;
-  subject: string;
-  message: string;
-  status: 'pending' | 'solved' | 'ignored';
-  userId?: string | null;
-  conversationId?: string | null;
-  user?: SupportUser | null;
-  createdAt?: string | null;
-};
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  clearSupportNotice,
+  deleteSupportMessages,
+  fetchSupportMessages,
+  setSupportMessageConversationId,
+  setSupportNotice,
+  setSupportPage,
+  toggleSupportCurrentPageSelected,
+  toggleSupportMessageSelected,
+  updateSupportStatus,
+  type SupportMessage,
+  type SupportUser,
+} from '@/store/slices/supportMessagesSlice';
 
 type ChatMessage = {
   id: string;
@@ -45,13 +35,10 @@ type SupportConversation = {
   otherUser?: SupportUser | null;
 };
 
-type Pagination = {
-  page: number;
-  limit: number;
-  totalItems: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
+type SupportMessageGroup = {
+  key: string;
+  latest: SupportMessage;
+  tickets: SupportMessage[];
 };
 
 const PAGE_SIZE = 15;
@@ -76,23 +63,24 @@ const getDisplayName = (item?: SupportMessage | null, conversation?: SupportConv
 export default function SupportPage() {
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
   const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || '';
+  const dispatch = useAppDispatch();
   const session = useAppSelector((state) => state.auth.session);
+  const {
+    deletingSelected,
+    items,
+    loading,
+    notice,
+    pagination,
+    selectedIds,
+    statusBusyId,
+  } = useAppSelector((state) => state.supportMessages);
+  const latestSupportNotificationId = useAppSelector(
+    (state) =>
+      state.adminNotifications.items.find((item) => item.notificationType === 'support_message')?.id || '',
+  );
   const adminToken = session?.accessToken || '';
   const adminUserId = session?.user?.id || '';
-  const [items, setItems] = React.useState<SupportMessage[]>([]);
-  const [pagination, setPagination] = React.useState<Pagination>({
-    page: 1,
-    limit: PAGE_SIZE,
-    totalItems: 0,
-    totalPages: 1,
-    hasNextPage: false,
-    hasPrevPage: false,
-  });
-  const [loading, setLoading] = React.useState(true);
-  const [statusBusyId, setStatusBusyId] = React.useState('');
   const [chatBusyId, setChatBusyId] = React.useState('');
-  const [page, setPage] = React.useState(1);
-  const [notice, setNotice] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [activeSupport, setActiveSupport] = React.useState<SupportMessage | null>(null);
   const [activeConversation, setActiveConversation] = React.useState<SupportConversation | null>(null);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
@@ -100,49 +88,43 @@ export default function SupportPage() {
   const [sending, setSending] = React.useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
   const socketRef = React.useRef<Socket | null>(null);
+  const currentPageIds = React.useMemo(() => items.map((item) => item.id), [items]);
+  const groupedItems = React.useMemo<SupportMessageGroup[]>(() => {
+    const map = new Map<string, SupportMessageGroup>();
+
+    items.forEach((item) => {
+      const key = item.userId || item.user?.id || item.email.toLowerCase() || item.id;
+      const existing = map.get(key);
+
+      if (!existing) {
+        map.set(key, {
+          key,
+          latest: item,
+          tickets: [item],
+        });
+        return;
+      }
+
+      existing.tickets.push(item);
+      const existingTime = new Date(existing.latest.createdAt || 0).getTime();
+      const itemTime = new Date(item.createdAt || 0).getTime();
+      if (itemTime > existingTime) {
+        existing.latest = item;
+      }
+    });
+
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.latest.createdAt || 0).getTime() - new Date(a.latest.createdAt || 0).getTime(),
+    );
+  }, [items]);
+  const selectedCount = selectedIds.length;
+  const allCurrentPageSelected =
+    currentPageIds.length > 0 && currentPageIds.every((id) => selectedIds.includes(id));
 
   const loadMessages = React.useCallback(async () => {
     if (!apiBase || !adminToken) return;
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(PAGE_SIZE),
-      });
-      const response = await fetch(`${apiBase}/api/support/admin?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-        },
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.message || 'Failed to load support messages.');
-      }
-
-      const nextItems = Array.isArray(payload?.data?.items)
-        ? (payload.data.items as SupportMessage[])
-        : Array.isArray(payload?.data)
-          ? (payload.data as SupportMessage[])
-          : [];
-      const nextPagination = payload?.data?.pagination as Pagination | undefined;
-
-      setItems(nextItems);
-      setPagination(
-        nextPagination || {
-          page,
-          limit: PAGE_SIZE,
-          totalItems: nextItems.length,
-          totalPages: Math.max(1, Math.ceil(nextItems.length / PAGE_SIZE)),
-          hasNextPage: false,
-          hasPrevPage: page > 1,
-        },
-      );
-    } catch (error: unknown) {
-      setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Failed to load support messages.' });
-    } finally {
-      setLoading(false);
-    }
-  }, [adminToken, apiBase, page]);
+    await dispatch(fetchSupportMessages({ apiBase, adminToken, page: pagination.page, limit: PAGE_SIZE }));
+  }, [adminToken, apiBase, dispatch, pagination.page]);
 
   React.useEffect(() => {
     void loadMessages();
@@ -150,13 +132,53 @@ export default function SupportPage() {
 
   React.useEffect(() => {
     if (!notice) return;
-    const timeoutId = window.setTimeout(() => setNotice(null), 3000);
+    const timeoutId = window.setTimeout(() => dispatch(clearSupportNotice()), 3000);
     return () => window.clearTimeout(timeoutId);
-  }, [notice]);
+  }, [dispatch, notice]);
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, activeConversation]);
+
+  const toggleSelectCurrentPage = () => {
+    dispatch(toggleSupportCurrentPageSelected());
+  };
+
+  const toggleGroupSelected = (group: SupportMessageGroup) => {
+    const groupIds = group.tickets.map((ticket) => ticket.id);
+    const allSelected = groupIds.every((id) => selectedIds.includes(id));
+    groupIds.forEach((id) => {
+      const selected = selectedIds.includes(id);
+      if ((allSelected && selected) || (!allSelected && !selected)) {
+        dispatch(toggleSupportMessageSelected(id));
+      }
+    });
+  };
+
+  const deleteSelectedMessages = async () => {
+    if (!apiBase || !adminToken || selectedIds.length === 0) return;
+    const confirmed = window.confirm(`Delete ${selectedIds.length} selected support message(s)? This cannot be undone.`);
+    if (!confirmed) return;
+
+    const deleteIds = selectedIds;
+    const result = await dispatch(deleteSupportMessages({ apiBase, adminToken, ids: deleteIds }));
+    if (deleteSupportMessages.fulfilled.match(result)) {
+      if (activeSupport?.id && deleteIds.includes(activeSupport.id)) {
+        closeInbox();
+      }
+      const remainingOnPage = items.filter((item) => !deleteIds.includes(item.id)).length;
+      if (remainingOnPage === 0 && pagination.page > 1) {
+        dispatch(setSupportPage(Math.max(1, pagination.page - 1)));
+      } else {
+        await loadMessages();
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    if (!latestSupportNotificationId) return;
+    void loadMessages();
+  }, [latestSupportNotificationId, loadMessages]);
 
   React.useEffect(() => {
     if (!socketUrl || !adminToken || !activeConversation?.id) return;
@@ -196,37 +218,7 @@ export default function SupportPage() {
 
   const updateStatus = async (id: string, status: 'solved' | 'ignored') => {
     if (!apiBase || !adminToken) return;
-    setStatusBusyId(id);
-    try {
-      const response = await fetch(`${apiBase}/api/support/admin/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.message || 'Failed to update support message.');
-      }
-      const updatedItem = payload?.data as SupportMessage | undefined;
-      setItems((current) =>
-        current.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                status: updatedItem?.status || status,
-              }
-            : item,
-        ),
-      );
-      setNotice({ type: 'success', message: `Message marked as ${status}.` });
-    } catch (error: unknown) {
-      setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Failed to update support message.' });
-    } finally {
-      setStatusBusyId('');
-    }
+    await dispatch(updateSupportStatus({ apiBase, adminToken, id, status }));
   };
 
   const openInbox = async (item: SupportMessage) => {
@@ -257,19 +249,9 @@ export default function SupportPage() {
       setActiveSupport(nextSupport);
       setMessages(nextMessages);
       setChatInput('');
-      setItems((current) =>
-        current.map((entry) =>
-          entry.id === item.id
-            ? {
-                ...entry,
-                ...nextSupport,
-                conversationId: conversation.id,
-              }
-            : entry,
-        ),
-      );
+      dispatch(setSupportMessageConversationId({ id: item.id, conversationId: conversation.id }));
     } catch (error: unknown) {
-      setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Failed to open inbox.' });
+      dispatch(setSupportNotice({ type: 'error', message: error instanceof Error ? error.message : 'Failed to open inbox.' }));
     } finally {
       setChatBusyId('');
     }
@@ -316,19 +298,10 @@ export default function SupportPage() {
           : current,
       );
       if (activeSupport?.id) {
-        setItems((current) =>
-          current.map((item) =>
-            item.id === activeSupport.id
-              ? {
-                  ...item,
-                  conversationId: activeConversation.id,
-                }
-              : item,
-          ),
-        );
+        dispatch(setSupportMessageConversationId({ id: activeSupport.id, conversationId: activeConversation.id }));
       }
     } catch (error: unknown) {
-      setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Failed to send message.' });
+      dispatch(setSupportNotice({ type: 'error', message: error instanceof Error ? error.message : 'Failed to send message.' }));
     } finally {
       setSending(false);
     }
@@ -358,6 +331,32 @@ export default function SupportPage() {
         </div>
 
         <div className="rounded-[24px] bg-white p-6 shadow-sm dark:bg-navy-800">
+          <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-gray-100 bg-lightPrimary p-4 dark:border-white/10 dark:bg-navy-700 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-200">
+                <input
+                  type="checkbox"
+                  checked={allCurrentPageSelected}
+                  onChange={toggleSelectCurrentPage}
+                  disabled={loading || currentPageIds.length === 0}
+                  className="h-4 w-4 rounded border-gray-300 accent-[#2286BE]"
+                />
+                Select page
+              </label>
+              <span className="text-sm font-semibold text-gray-500 dark:text-gray-300">
+                {selectedCount ? `${selectedCount} selected` : `${pagination.totalItems} total messages`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => void deleteSelectedMessages()}
+              disabled={selectedCount === 0 || deletingSelected}
+              className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deletingSelected ? 'Deleting...' : `Delete Selected${selectedCount ? ` (${selectedCount})` : ''}`}
+            </button>
+          </div>
+
           {loading ? (
             <div className="rounded-2xl bg-lightPrimary p-5 text-sm font-semibold text-gray-500 dark:bg-navy-700 dark:text-gray-300">
               Loading support messages...
@@ -368,21 +367,58 @@ export default function SupportPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {items.map((item) => (
-                <div key={item.id} className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-navy-900">
+              {groupedItems.map((group) => {
+                const item = group.latest;
+                const groupIds = group.tickets.map((ticket) => ticket.id);
+                const groupSelected = groupIds.length > 0 && groupIds.every((id) => selectedIds.includes(id));
+                const pendingCount = group.tickets.filter((ticket) => ticket.status === 'pending').length;
+                return (
+                <div key={group.key} className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-navy-900">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="min-w-0">
+                    <div className="flex min-w-0 flex-1 gap-4">
+                      <label className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={groupSelected}
+                          onChange={() => toggleGroupSelected(group)}
+                          className="h-4 w-4 rounded border-gray-300 accent-[#2286BE]"
+                          aria-label={`Select support messages from ${item.fullName}`}
+                        />
+                      </label>
+                      <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                          {item.status}
+                          {pendingCount ? `${pendingCount} pending` : item.status}
+                        </span>
+                        <span className="rounded-full bg-[#2286BE]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#2286BE]">
+                          New ticket: {item.subject}
                         </span>
                         <span className="text-xs font-semibold text-gray-400">{formatDate(item.createdAt)}</span>
                       </div>
-                      <h2 className="mt-3 text-lg font-bold text-navy-700 dark:text-white">{item.subject}</h2>
+                      <h2 className="mt-3 text-lg font-bold text-navy-700 dark:text-white">{item.fullName}</h2>
                       <p className="mt-1 text-sm font-semibold text-gray-500 dark:text-gray-300">
-                        {item.fullName} - {item.email}
+                        {item.email} · {group.tickets.length} ticket{group.tickets.length === 1 ? '' : 's'}
                       </p>
                       <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">{item.message}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {group.tickets.map((ticket) => (
+                          <button
+                            key={ticket.id}
+                            type="button"
+                            onClick={() => void openInbox(ticket)}
+                            className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
+                              ticket.id === item.id
+                                ? 'bg-[#2286BE] text-white hover:bg-[#1b75a8]'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-gray-200'
+                            }`}
+                            title={ticket.message}
+                          >
+                            {ticket.id === item.id ? 'New: ' : ''}
+                            {ticket.subject}
+                          </button>
+                        ))}
+                      </div>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 md:justify-end">
@@ -417,17 +453,17 @@ export default function SupportPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
 
-              {pagination.totalPages > 1 ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-gray-100 px-4 py-3 dark:border-white/10">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-gray-100 px-4 py-3 dark:border-white/10">
                   <p className="text-sm font-semibold text-gray-500 dark:text-gray-300">
                     Page {pagination.page} of {pagination.totalPages} - {pagination.totalItems} messages
                   </p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                      onClick={() => dispatch(setSupportPage(Math.max(1, pagination.page - 1)))}
                       disabled={!pagination.hasPrevPage}
                       className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-white dark:hover:bg-white/5"
                     >
@@ -435,7 +471,7 @@ export default function SupportPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+                      onClick={() => dispatch(setSupportPage(Math.min(pagination.totalPages, pagination.page + 1)))}
                       disabled={!pagination.hasNextPage}
                       className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-white dark:hover:bg-white/5"
                     >
@@ -443,7 +479,6 @@ export default function SupportPage() {
                     </button>
                   </div>
                 </div>
-              ) : null}
             </div>
           )}
         </div>

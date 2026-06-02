@@ -8,6 +8,7 @@ import { downloadCSV } from '@/utils/exportUtils';
 import SearchInput from '@/components/ui/SearchInput';
 import CustomSelect from '@/components/ui/CustomSelect';
 import CustomDatePicker from '@/components/ui/CustomDatePicker';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { getStoredAdminToken } from '@/lib/auth';
 import {
@@ -316,13 +317,7 @@ const CustomerTable = ({ tableData }: { tableData: CustomerRow[] }) => {
                     onClick={() => void openCustomerModal(row.id)}
                     className="group flex items-center gap-3 text-left"
                   >
-                    {row.avatar ? (
-                      <img src={row.avatar} alt={row.name} className="h-[40px] w-[40px] rounded-full object-cover" />
-                    ) : (
-                      <div className="flex h-[40px] w-[40px] items-center justify-center rounded-full bg-brand-200 font-bold text-brand-500 transition-colors group-hover:bg-brand-500 group-hover:text-white">
-                        {row.name.charAt(0)}
-                      </div>
-                    )}
+                    <UserAvatar src={row.avatar} alt={row.name} size={40} className="transition-colors group-hover:bg-brand-500 group-hover:text-white" />
                     <div>
                       <p className="text-sm font-bold uppercase text-navy-700 transition-colors group-hover:text-brand-500 dark:text-white">
                         {row.name}
@@ -520,17 +515,7 @@ const CustomerTable = ({ tableData }: { tableData: CustomerRow[] }) => {
                 <div className="lg:col-span-4">
                   <div className="rounded-3xl border border-gray-100 p-6 shadow-sm dark:border-white/10">
                     <div className="flex flex-col items-center text-center">
-                      {selectedCustomer.customer.avatar ? (
-                        <img
-                          src={selectedCustomer.customer.avatar}
-                          alt={selectedCustomer.customer.name}
-                          className="h-28 w-28 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-28 w-28 items-center justify-center rounded-full bg-brand-500 text-4xl font-bold text-white">
-                          {selectedCustomer.customer.name.charAt(0)}
-                        </div>
-                      )}
+                      <UserAvatar src={selectedCustomer.customer.avatar} alt={selectedCustomer.customer.name} size={112} />
                       <h2 className="mt-4 text-2xl font-bold text-navy-700 dark:text-white">{selectedCustomer.customer.name}</h2>
                       <p className="text-sm text-gray-500">{selectedCustomer.customer.email}</p>
                       <span className={`mt-4 rounded-full px-3 py-1 text-xs font-bold ${selectedCustomer.customer.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>

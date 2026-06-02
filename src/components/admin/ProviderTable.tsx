@@ -19,6 +19,7 @@ import { downloadCSV } from '@/utils/exportUtils';
 import SearchInput from '@/components/ui/SearchInput';
 import CustomSelect from '@/components/ui/CustomSelect';
 import CustomDatePicker from '@/components/ui/CustomDatePicker';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { getStoredAdminToken } from '@/lib/auth';
 import {
@@ -521,13 +522,7 @@ const ProviderTable = ({ tableData }: { tableData: ProviderRow[] }) => {
                 </td>
                 <td className="min-w-[240px] border-white/0 py-3 pr-4">
                   <button type="button" onClick={() => void openProviderModal(row.id)} className="group flex items-center gap-3 text-left">
-                    {row.avatar ? (
-                      <img src={row.avatar} alt={row.name} className="h-[40px] w-[40px] rounded-full object-cover" />
-                    ) : (
-                      <div className="flex h-[40px] w-[40px] items-center justify-center rounded-full bg-brand-200 font-bold text-brand-500 transition-colors group-hover:bg-brand-500 group-hover:text-white">
-                        {row.name.charAt(0)}
-                      </div>
-                    )}
+                    <UserAvatar src={row.avatar} alt={row.name} size={40} className="transition-colors group-hover:bg-brand-500 group-hover:text-white" />
                     <div>
                       <p className="text-sm font-bold text-navy-700 transition-colors group-hover:text-brand-500 dark:text-white">{row.name}</p>
                       <p className="text-xs text-gray-400">{row.email}</p>
@@ -726,17 +721,7 @@ const ProviderTable = ({ tableData }: { tableData: ProviderRow[] }) => {
                 <div className="lg:col-span-4">
                   <div className="rounded-3xl border border-gray-100 p-6 shadow-sm dark:border-white/10">
                     <div className="flex flex-col items-center text-center">
-                      {selectedProvider.provider.avatar ? (
-                        <img
-                          src={selectedProvider.provider.avatar}
-                          alt={selectedProvider.provider.name}
-                          className="h-28 w-28 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-28 w-28 items-center justify-center rounded-full bg-brand-500 text-4xl font-bold text-white">
-                          {selectedProvider.provider.name.charAt(0)}
-                        </div>
-                      )}
+                      <UserAvatar src={selectedProvider.provider.avatar} alt={selectedProvider.provider.name} size={112} />
                       <h2 className="mt-4 text-2xl font-bold text-navy-700 dark:text-white">{selectedProvider.provider.name}</h2>
                       <p className="text-sm text-gray-500">{selectedProvider.provider.email}</p>
                       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">

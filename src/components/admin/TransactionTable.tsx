@@ -6,6 +6,7 @@ import { downloadCSV } from '@/utils/exportUtils';
 import SearchInput from '@/components/ui/SearchInput';
 import CustomSelect from '@/components/ui/CustomSelect';
 import CustomDatePicker from '@/components/ui/CustomDatePicker';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
     resetTransactionTableState,
@@ -236,9 +237,7 @@ const TransactionTable = (props: { tableData: RowObj[] }) => {
                                 </td>
                                 <td className="py-4 pr-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-9 w-9 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center text-sm font-bold text-brand-500">
-                                            {row.user.charAt(0)}
-                                        </div>
+                                        <UserAvatar alt={row.user} size={36} />
                                         <div>
                                             <p className="text-sm font-bold text-navy-700 dark:text-white">{row.user}</p>
                                             <p className="text-xs text-gray-400">{row.service}</p>

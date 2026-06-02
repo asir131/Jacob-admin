@@ -1,6 +1,7 @@
 'use client';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import Card from '@/components/Card/Card';
+import UserAvatar from '@/components/ui/UserAvatar';
 import {
     MdVerified, MdStar, MdLocationOn, MdAccessTime, MdPhone, MdEmail,
     MdAttachMoney, MdDescription, MdWork, MdWarning, MdImage, MdInsertDriveFile
@@ -206,9 +207,7 @@ export default function ProviderDetail({ params }: { params: { id: string } }) {
                                 { name: 'Sarah Connor', rating: 5, text: 'Saved my basement from flooding! Hero.', date: '2 weeks ago' }
                             ].map((review, i) => (
                                 <div key={i} className="flex gap-4 p-4 rounded-xl bg-gray-50 dark:bg-navy-800">
-                                    <div className="h-10 w-10 rounded-full bg-brand-100 text-brand-500 flex items-center justify-center font-bold">
-                                        {review.name.charAt(0)}
-                                    </div>
+                                    <UserAvatar alt={review.name} size={40} />
                                     <div>
                                         <div className="flex justify-between w-full min-w-[200px]">
                                             <p className="font-bold text-navy-700 dark:text-white">{review.name}</p>

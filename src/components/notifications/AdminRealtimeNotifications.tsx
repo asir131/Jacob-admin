@@ -105,6 +105,7 @@ export default function AdminRealtimeNotifications() {
         String(event.title || '').toLowerCase().includes('custom category');
       const isProviderVerification = notificationType === 'provider_verification_request';
       const isSupportMessage = notificationType === 'support_message';
+      const isChatMessage = notificationType === 'chat_message';
       const isServiceRequest =
         notificationType === 'service_request_created' ||
         notificationType === 'custom_category_request_created';
@@ -114,7 +115,7 @@ export default function AdminRealtimeNotifications() {
         notificationType === 'withdrawal_request_rejected' ||
         notificationType === 'withdrawal_paid';
 
-      if (!isGigApproval && !isProviderVerification && !isWithdrawalRequest && !isSupportMessage && !isServiceRequest) return;
+      if (!isGigApproval && !isProviderVerification && !isWithdrawalRequest && !isSupportMessage && !isChatMessage && !isServiceRequest) return;
 
       const withdrawalTitleMap: Record<string, string> = {
         withdrawal_request_created: 'New withdrawal request',
@@ -129,6 +130,8 @@ export default function AdminRealtimeNotifications() {
           event.title ||
           (isWithdrawalRequest
             ? withdrawalTitleMap[notificationType] || 'Withdrawal update'
+            : isChatMessage
+              ? 'New chat message'
             : isSupportMessage
               ? 'New support message'
             : isProviderVerification
@@ -140,6 +143,8 @@ export default function AdminRealtimeNotifications() {
           event.description ||
           (isWithdrawalRequest
             ? 'A provider withdrawal request needs your attention.'
+            : isChatMessage
+              ? 'A customer replied in support chat.'
             : isSupportMessage
               ? 'A user sent a new support message from the contact page.'
             : notificationType === 'custom_category_request_created'
@@ -154,6 +159,8 @@ export default function AdminRealtimeNotifications() {
           event.data?.categoryName ||
           (isWithdrawalRequest
             ? 'Withdrawal'
+            : isChatMessage
+              ? 'Support chat'
             : isSupportMessage
               ? 'Support'
             : notificationType === 'custom_category_request_created'
@@ -166,6 +173,8 @@ export default function AdminRealtimeNotifications() {
         providerName: event.data?.providerName || 'System',
         notificationType: isWithdrawalRequest
           ? notificationType
+          : isChatMessage
+            ? 'chat_message'
           : isSupportMessage
             ? 'support_message'
           : isServiceRequest
@@ -176,7 +185,7 @@ export default function AdminRealtimeNotifications() {
         providerId: event.data?.providerId,
         targetPath:
           event.data?.targetPath ||
-          (isWithdrawalRequest ? '/withdrawals' : isSupportMessage ? '/support' : isServiceRequest ? '/service-requests' : isProviderVerification ? '/provider-verifications' : '/gig-approvals'),
+          (isWithdrawalRequest ? '/withdrawals' : isChatMessage || isSupportMessage ? '/support' : isServiceRequest ? '/service-requests' : isProviderVerification ? '/provider-verifications' : '/gig-approvals'),
         createdAt: event.createdAt || new Date().toISOString(),
       };
 
