@@ -462,7 +462,10 @@ const ProviderTable = ({ tableData }: { tableData: ProviderRow[] }) => {
           <div className="flex items-end justify-end gap-3">
             <button
               type="button"
-              onClick={() => setSelectedProviderIds([])}
+              onClick={() => {
+                setSelectedProviderIds([]);
+                setRequestRef('');
+              }}
               className="h-12 rounded-2xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white dark:hover:bg-white/5"
             >
               Clear Selection
